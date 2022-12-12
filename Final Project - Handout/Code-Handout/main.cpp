@@ -75,6 +75,35 @@ uniform_int_distribution<unsigned int> colGenerator;
 //	to make sure that access to critical section is properly synchronized
 //==================================================================================
 
+
+void moveTravelerNorth(std::__1::vector<Traveler>& localTravelerList){
+	//localTravelerList[0].segmentList[0].row = localTravelerList[0].segmentList[0].row - 1;
+	localTravelerList[0].segmentList[0].row --;
+	std::cout<<" Traveler 0 Segment 0 at (row = " <<localTravelerList[0].segmentList[0].row
+	<<", col =" <<localTravelerList[0].segmentList[0].col<< ")"<<std::endl;
+}
+
+void moveTravelerSouth(std::__1::vector<Traveler>& localTravelerList){
+	//localTravelerList[0].segmentList[0].row = localTravelerList[0].segmentList[0].row - 1;
+	localTravelerList[0].segmentList[0].row ++;
+	std::cout<<" Traveler 0 Segment 0 at (row = " <<localTravelerList[0].segmentList[0].row
+	<<", col =" <<localTravelerList[0].segmentList[0].col<< ")"<<std::endl;
+}
+
+void moveTravelerWest(std::__1::vector<Traveler>& localTravelerList){
+	//localTravelerList[0].segmentList[0].row = localTravelerList[0].segmentList[0].row - 1;
+	localTravelerList[0].segmentList[0].col --;
+	std::cout<<" Traveler 0 Segment 0 at (row = " <<localTravelerList[0].segmentList[0].row
+	<<", col =" <<localTravelerList[0].segmentList[0].col<< ")"<<std::endl;
+}
+
+void moveTravelerEast(std::__1::vector<Traveler>& localTravelerList){
+	//localTravelerList[0].segmentList[0].row = localTravelerList[0].segmentList[0].row - 1;
+	localTravelerList[0].segmentList[0].col ++;
+	std::cout<<" Traveler 0 Segment 0 at (row = " <<localTravelerList[0].segmentList[0].row
+	<<", col =" <<localTravelerList[0].segmentList[0].col<< ")"<<std::endl;
+}
+
 void drawTravelers(void)
 {
 	//-----------------------------
@@ -84,6 +113,7 @@ void drawTravelers(void)
 	{
 		//	here I would test if the traveler thread is still live
 		drawTraveler(travelerList[k]);
+		//drawTraveler()
 	}
 }
 
@@ -126,6 +156,8 @@ void handleKeyboardEvent(unsigned char c, int x, int y)
 
 		//	speedup
 		case '.':
+			//moveTravelerNot(travelerList[0]);
+			//moveTravelerTest(travelerList);
 			speedupTravelers();
 			ok = 1;
 			break;
@@ -297,6 +329,8 @@ cout << endl;
 			traveler.rgba[c] = travelerColor[k][c];
 		
 		travelerList.push_back(traveler);
+		//						REMOVE TEST LINE						//////
+		//std::cout<<"TRAVELER TEST: "<<&travelerList[0].segmentList<<std::endl;
 	}
 	
 	//	free array of colors
