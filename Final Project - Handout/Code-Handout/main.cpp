@@ -40,6 +40,7 @@ unsigned int numRows = 0;	//	height of the grid
 unsigned int numCols = 0;	//	width
 unsigned int numTravelers = 0;	//	initial number
 unsigned int numTravelersDone = 0;
+unsigned int movesBeforeGrowth = 0;		//  Number of moves before the traveler grows
 unsigned int numLiveThreads = 0;		//	the number of live traveler threads
 vector<Traveler> travelerList;
 vector<SlidingPartition> partitionList;
@@ -176,9 +177,10 @@ int main(int argc, char* argv[])
 	//	to be the width (number of columns) and height (number of rows) of the
 	//	grid, the number of travelers, etc.
 	//	So far, I hard code-some values
-	numRows = 40;
-	numCols = 45;
-	numTravelers = 8;
+	numRows = atoi(argv[1]);
+	numCols = atoi(argv[2]);
+	numTravelers = atoi(argv[3]);
+	movesBeforeGrowth = atoi(argv[4]);
 	numLiveThreads = 0;
 	numTravelersDone = 0;
 

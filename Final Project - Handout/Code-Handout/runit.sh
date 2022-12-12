@@ -1,3 +1,3 @@
 #!/bin/bash
 
-./finalProject 1 45 10
+./finalProject 40 45 8 10s
