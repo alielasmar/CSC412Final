@@ -77,33 +77,29 @@ uniform_int_distribution<unsigned int> colGenerator;
 //==================================================================================
 
 
-void moveTravelerNorth(std::__1::vector<Traveler>& localTravelerList){
-	//localTravelerList[0].segmentList[0].row = localTravelerList[0].segmentList[0].row - 1;
-	localTravelerList[0].segmentList[0].row --;
-	std::cout<<" Traveler 0 Segment 0 at (row = " <<localTravelerList[0].segmentList[0].row
-	<<", col =" <<localTravelerList[0].segmentList[0].col<< ")"<<std::endl;
+void moveTraveler(struct TravelerToPass localTraveler){
+//	std::cout<<" Traveler 0 Segment 0 at (row = " <<localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].row
+//	<<", col =" <<localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].col<< ")"<<std::endl;
+	
+	if(strncmp(localTraveler.directionOfHead,"East",2)== 0){
+		localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].col++;
 }
 
-void moveTravelerSouth(std::__1::vector<Traveler>& localTravelerList){
-	//localTravelerList[0].segmentList[0].row = localTravelerList[0].segmentList[0].row - 1;
-	localTravelerList[0].segmentList[0].row ++;
-	std::cout<<" Traveler 0 Segment 0 at (row = " <<localTravelerList[0].segmentList[0].row
-	<<", col =" <<localTravelerList[0].segmentList[0].col<< ")"<<std::endl;
+	if(strncmp(localTraveler.directionOfHead,"West",2)== 0){
+		localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].col--;
+	}
+	if(strncmp(localTraveler.directionOfHead,"South",2)== 0){
+		localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].row++;
+	}
+	if(strncmp(localTraveler.directionOfHead,"North",2)== 0){
+		localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].row--;
+	}
+
+	std::cout<<" Traveler 0 Segment 0 at (row = " <<localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].row
+	<<", col =" <<localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].col<< ")"<<std::endl;
+
 }
 
-void moveTravelerWest(std::__1::vector<Traveler>& localTravelerList){
-	//localTravelerList[0].segmentList[0].row = localTravelerList[0].segmentList[0].row - 1;
-	localTravelerList[0].segmentList[0].col --;
-	std::cout<<" Traveler 0 Segment 0 at (row = " <<localTravelerList[0].segmentList[0].row
-	<<", col =" <<localTravelerList[0].segmentList[0].col<< ")"<<std::endl;
-}
-
-void moveTravelerEast(std::__1::vector<Traveler>& localTravelerList){
-	//localTravelerList[0].segmentList[0].row = localTravelerList[0].segmentList[0].row - 1;
-	localTravelerList[0].segmentList[0].col ++;
-	std::cout<<" Traveler 0 Segment 0 at (row = " <<localTravelerList[0].segmentList[0].row
-	<<", col =" <<localTravelerList[0].segmentList[0].col<< ")"<<std::endl;
-}
 
 void drawTravelers(void)
 {
@@ -141,7 +137,7 @@ void updateMessages(void)
 void handleKeyboardEvent(unsigned char c, int x, int y)
 {
 	int ok = 0;
-
+	struct TravelerToPass travelerToPass;
 	switch (c)
 	{
 		//	'esc' to quit
@@ -157,10 +153,14 @@ void handleKeyboardEvent(unsigned char c, int x, int y)
 
 		//	speedup
 		case '.':
-			//moveTravelerNot(travelerList[0]);
-			//moveTravelerTest(travelerList);
+/*		183-186 moves traveler							*/
+			travelerToPass.travelersPassed =&travelerList;
+			travelerToPass.travelerIdx = 0;
+			travelerToPass.directionOfHead =(char *)"East";
+			moveTraveler(travelerToPass);
 			speedupTravelers();
 			ok = 1;
+			//travelerList = travelerToPass.travelersPassed;
 			break;
 
 		default:

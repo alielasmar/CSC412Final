@@ -94,6 +94,16 @@ struct Traveler
 	
 };
 
+struct TravelerToPass{
+
+	std::vector<Traveler> * travelersPassed;
+	int travelerIdx;
+	char * directionOfHead;
+
+
+};
+
+
 /**
  *	Data type to represent a sliding partition
  */
