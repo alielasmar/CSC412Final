@@ -96,7 +96,7 @@ struct Traveler
 
 struct TravelerToPass{
 
-	std::vector<Traveler> travelersPassed;
+	std::vector<Traveler> * travelersPassed;
 	int travelerIdx;
 	char * directionOfHead;
 
