@@ -92,6 +92,7 @@ struct Traveler
 	 */
 	std::vector<TravelerSegment> segmentList;
 	
+	int numberOfSegments;
 };
 
 struct TravelerToPass{
