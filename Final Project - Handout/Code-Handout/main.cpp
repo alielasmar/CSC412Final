@@ -12,6 +12,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
+#include <cstring>
 //
 #include "gl_frontEnd.h"
 //
@@ -31,6 +32,7 @@ Direction newDirection(Direction forbiddenDir = Direction::NUM_DIRECTIONS);
 TravelerSegment newTravelerSegment(const TravelerSegment& currentSeg, bool& canAdd);
 void generateWalls(void);
 void generatePartitions(void);
+void pathFinding(struct TravelerToPass localTraveler);
 
 //==================================================================================
 //	Application-level global variables
@@ -323,10 +325,12 @@ void initializeApplication(void)
 		unsigned int numAddSegments = segmentNumberGenerator(engine);
 		TravelerSegment currSeg = traveler.segmentList[0];
 		bool canAddSegment = true;
-cout << "Traveler " << k << " at (row=" << pos.row << ", col=" <<
+		cout << "Traveler " << k << " at (row=" << pos.row << ", col=" <<
 		pos.col << "), direction: " << dirStr(dir) << ", with up to " << numAddSegments << " additional segments" << endl;
-cout << "\t";
+		cout << "\t";
+
 		traveler.numberOfSegments = numAddSegments;
+
 		for (unsigned int s=0; s<numAddSegments && canAddSegment; s++)
 		{
 			TravelerSegment newSeg = newTravelerSegment(currSeg, canAddSegment);
@@ -334,10 +338,10 @@ cout << "\t";
 			{
 				traveler.segmentList.push_back(newSeg);
 				currSeg = newSeg;
-cout << dirStr(newSeg.dir) << "  ";
+				cout << dirStr(newSeg.dir) << "  ";
 			}
 		}
-cout << endl;
+		cout << endl;
 
 		for (unsigned int c=0; c<4; c++)
 			traveler.rgba[c] = travelerColor[k][c];
@@ -349,6 +353,31 @@ cout << endl;
 	for (unsigned int k=0; k<numTravelers; k++)
 		delete []travelerColor[k];
 	delete []travelerColor;
+}
+
+
+
+
+
+//Use struct
+//Make global variable for the exit row and column
+//Get the traveler to goal so give it a direction
+void pathFinding(struct TravelerToPass localTraveler){
+	if(strncmp(localTraveler.directionOfHead,"East",2)== 0 || 
+	strncmp(localTraveler.directionOfHead,"West",2)== 0){
+		//if(){
+
+		//}
+
+
+	}
+	else if(strncmp(localTraveler.directionOfHead,"North",2)== 0 || 
+	strncmp(localTraveler.directionOfHead,"South",2)== 0){
+
+
+
+	}
+
 }
 
 
@@ -646,4 +675,3 @@ void generatePartitions(void)
 		}
 	}
 }
-
