@@ -14,10 +14,14 @@
 #include <ctime>
 //
 #include "gl_frontEnd.h"
+//
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 //	feel free to "un-use" std if this is against your beliefs.
 using namespace std;
-
+pthread_t t1;
 //==================================================================================
 //	Function prototypes
 //==================================================================================
@@ -77,26 +81,33 @@ uniform_int_distribution<unsigned int> colGenerator;
 
 
 void moveTraveler(struct TravelerToPass localTraveler){
-//	std::cout<<" Traveler 0 Segment 0 at (row = " <<localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].row
-//	<<", col =" <<localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].col<< ")"<<std::endl;
-	
-	if(strncmp(localTraveler.directionOfHead,"East",2)== 0){
-		localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].col++;
-}
 
+	for(int i = localTraveler.travelersPassed[0][localTraveler.travelerIdx].numberOfSegments; i > 0; i--){
+		localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[i].col = localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[i-1].col;
+		localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[i].row = localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[i-1].row;
+		localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[i].dir = localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[i-1].dir;
+	}
+	if(strncmp(localTraveler.directionOfHead,"East",2)== 0){
+		localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].dir = Direction::EAST;
+		localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].col++;
+
+	}
 	if(strncmp(localTraveler.directionOfHead,"West",2)== 0){
+		localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].dir = Direction::WEST;
 		localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].col--;
 	}
 	if(strncmp(localTraveler.directionOfHead,"South",2)== 0){
+		localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].dir = Direction::SOUTH ;
 		localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].row++;
 	}
 	if(strncmp(localTraveler.directionOfHead,"North",2)== 0){
+		localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].dir = Direction::NORTH ;
 		localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].row--;
 	}
-
+/*
 	std::cout<<" Traveler 0 Segment 0 at (row = " <<localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].row
 	<<", col =" <<localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].col<< ")"<<std::endl;
-
+*/
 }
 
 
@@ -152,7 +163,8 @@ void handleKeyboardEvent(unsigned char c, int x, int y)
 
 		//	speedup
 		case '.':
-/*		183-186 moves traveler							*/
+		//pthread
+/*		158-162 moves traveler			*/				
 			travelerToPass.travelersPassed =&travelerList;
 			travelerToPass.travelerIdx = 0;
 			travelerToPass.directionOfHead =(char *)"East";
@@ -312,7 +324,7 @@ void initializeApplication(void)
 cout << "Traveler " << k << " at (row=" << pos.row << ", col=" <<
 		pos.col << "), direction: " << dirStr(dir) << ", with up to " << numAddSegments << " additional segments" << endl;
 cout << "\t";
-
+		traveler.numberOfSegments = numAddSegments;
 		for (unsigned int s=0; s<numAddSegments && canAddSegment; s++)
 		{
 			TravelerSegment newSeg = newTravelerSegment(currSeg, canAddSegment);
@@ -329,8 +341,6 @@ cout << endl;
 			traveler.rgba[c] = travelerColor[k][c];
 		
 		travelerList.push_back(traveler);
-		//						REMOVE TEST LINE						//////
-		//std::cout<<"TRAVELER TEST: "<<&travelerList[0].segmentList<<std::endl;
 	}
 	
 	//	free array of colors
