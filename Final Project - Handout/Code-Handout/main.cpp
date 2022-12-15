@@ -325,9 +325,11 @@ void initializeApplication(void)
 		unsigned int numAddSegments = segmentNumberGenerator(engine);
 		TravelerSegment currSeg = traveler.segmentList[0];
 		bool canAddSegment = true;
-cout << "Traveler " << k << " at (row=" << pos.row << ", col=" <<
+		cout << "Traveler " << k << " at (row=" << pos.row << ", col=" <<
 		pos.col << "), direction: " << dirStr(dir) << ", with up to " << numAddSegments << " additional segments" << endl;
-cout << "\t";
+		cout << "\t";
+
+		traveler.numberOfSegments = numAddSegments;
 
 		for (unsigned int s=0; s<numAddSegments && canAddSegment; s++)
 		{
