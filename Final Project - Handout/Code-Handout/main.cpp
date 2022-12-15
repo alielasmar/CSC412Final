@@ -356,26 +356,64 @@ void initializeApplication(void)
 }
 
 
-
-
+//THREAD FUNC
+//NOTES: KEEP CHECKING IF THERE IS A WALL IN FIRST DIRECTION IF NOT TRAVELING TOWARDS GOAL
+//
+//WHILE (Not Finished){
+//  WHILE(TRaveling towards goal) 
+//	 If(Not Blocked){ moveTraveler() }
+//   Else if (Wall) {pathFinding() }
+//
+//}
 
 //Use struct
-//Make global variable for the exit row and column
 //Get the traveler to goal so give it a direction
 void pathFinding(struct TravelerToPass localTraveler){
-	if(strncmp(localTraveler.directionOfHead,"East",2)== 0 || 
-	strncmp(localTraveler.directionOfHead,"West",2)== 0){
-		//if(){
+	int currentRow = localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].row;
+	int currentCol = localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].col;
+	Direction currentDir = localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].dir;
 
-		//}
-
-
+	if(currentDir == Direction::EAST || currentDir == Direction::WEST){
+		//Check to see which direction is towards goal
+		if(currentRow > exitPos.row){
+			//Check to see if tile is open
+			if(grid[currentRow + 1][currentCol] == SquareType::FREE_SQUARE){
+				currentDir = Direction::NORTH;
+			}
+			else{
+				currentDir = Direction::SOUTH;
+			}
+		}
+		else{
+			//Check to see if tile is open
+			if(grid[currentRow - 1][currentCol] == SquareType::FREE_SQUARE){
+				currentDir = Direction::SOUTH;
+			}
+			else{
+				currentDir = Direction::NORTH;
+			}
+		}
 	}
-	else if(strncmp(localTraveler.directionOfHead,"North",2)== 0 || 
-	strncmp(localTraveler.directionOfHead,"South",2)== 0){
-
-
-
+	else{
+		//Check to see which direction is towards goal
+		if(currentCol > exitPos.col){
+			//Check to see if tile is open
+			if(grid[currentRow][currentCol + 1] == SquareType::FREE_SQUARE){
+				currentDir = Direction::EAST;
+			}
+			else{
+				currentDir = Direction::WEST;
+			}
+		}
+		else{
+			//Check to see if tile is open
+			if(grid[currentRow][currentCol - 1] == SquareType::FREE_SQUARE){
+				currentDir = Direction::WEST;
+			}
+			else{
+				currentDir = Direction::EAST;
+			}
+		}
 	}
 
 }
