@@ -32,6 +32,8 @@ Direction newDirection(Direction forbiddenDir = Direction::NUM_DIRECTIONS);
 TravelerSegment newTravelerSegment(const TravelerSegment& currentSeg, bool& canAdd);
 void generateWalls(void);
 void generatePartitions(void);
+void threadFunc(struct TravelerToPass localTraveler);
+bool checkNextSquare(struct TravelerToPass localTraveler, Direction currentDir);
 void pathFinding(struct TravelerToPass localTraveler);
 
 //==================================================================================
@@ -356,28 +358,186 @@ void initializeApplication(void)
 }
 
 
+//THREAD FUNC
+//NOTES: KEEP CHECKING IF THERE IS A WALL IN FIRST DIRECTION IF NOT TRAVELING TOWARDS GOAL
+//MAKE SURE TO CHECK WALLS
+//
+//WHILE (Not Finished){
+//  WHILE(TRaveling towards goal) 
+//	 If(Not Blocked){ moveTraveler() }
+//   Else if (Wall) {pathFinding() }
+//
+//}
+void threadFunc(struct TravelerToPass localTraveler){
+	bool goalReached = false;
+	bool movingToGoal, colMove, rowMove, isNextFree;
+	unsigned int currentRow, currentCol;
+	Direction currentDir, colDir, rowDir;
 
+	while(goalReached != true){
+		currentRow = localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].row;
+		currentCol = localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].col;
+		currentDir = localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].dir;
+		
+		//Check north/south movement
+		if(currentRow > exitPos.row){
+			rowDir = Direction::NORTH;
+			rowMove = true;
+		}
+		else if (currentRow > exitPos.row){
+			rowDir = Direction::SOUTH;
+			rowMove = true;
+		}
+		else{
+			rowMove = false;
+			rowDir = Direction::WEST;
+		}
+		//Check east/west movement
+		if(currentCol > exitPos.col){
+			colDir = Direction::WEST;
+			colMove = true;
+		}
+		else if (currentRow > exitPos.row){
+			colDir = Direction::EAST;
+			colMove = true;
+		}
+		else{
+			colMove = false;
+			colDir = Direction::NORTH;
+		}
+		
+		//Check to see if Traveler is moving towards the goal
+		if(currentDir == colDir && colMove == true){
+			movingToGoal = true;
+		}
+		else if(currentDir == rowDir && rowMove == true){
+			movingToGoal = true;
+		}
+		
+		
+		//Check for wall then move if traveler is moving in correct direction
+		if(movingToGoal == true){
+			isNextFree = checkNextSquare(localTraveler, currentDir);
+			if(isNextFree == true){
+				moveTraveler(localTraveler);
+			}
+		}
+		else{
+			if(checkNextSquare(localTraveler, rowDir) == true){
+				//Change the direction of the traveler's head and move the traveler
+				localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].dir = rowDir;
+				moveTraveler(localTraveler);
+			}
+			else if(checkNextSquare(localTraveler, colDir) == true){
+				//Change the direction of the traveler's head and move the traveler
+				localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].dir = colDir;
+				moveTraveler(localTraveler);
+			}
+			else if(checkNextSquare(localTraveler, currentDir) == true){
+				//Move the traveler
+				moveTraveler(localTraveler);
+			}
+			else{
+				pathFinding(localTraveler);
+			}
+		}
+		
+
+
+		pathFinding(localTraveler);
+		
+	}
+}
+
+bool checkNextSquare(struct TravelerToPass localTraveler, Direction currentDir){
+	unsigned int currentRow = localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].row;
+	unsigned int currentCol = localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].col;
+
+	if (currentDir == Direction::EAST){
+		if(grid[currentRow][currentCol + 1] == SquareType::FREE_SQUARE){
+			return true;
+		}
+		else{
+			return false;
+		}
+	}
+	else if(currentDir == Direction::WEST){
+		if(grid[currentRow][currentCol - 1] == SquareType::FREE_SQUARE){
+			return true;
+		}
+		else{
+			return false;
+		}
+	}
+	else if(currentDir == Direction::NORTH){
+		if(grid[currentRow + 1][currentCol] == SquareType::FREE_SQUARE){
+			return true;
+		}
+		else{
+			return false;
+		}
+	}
+	else{
+		if(grid[currentRow - 1][currentCol] == SquareType::FREE_SQUARE){
+			return true;
+		}
+		else{
+			return false;
+		}
+	}
+}
 
 
 //Use struct
-//Make global variable for the exit row and column
 //Get the traveler to goal so give it a direction
 void pathFinding(struct TravelerToPass localTraveler){
-	if(strncmp(localTraveler.directionOfHead,"East",2)== 0 || 
-	strncmp(localTraveler.directionOfHead,"West",2)== 0){
-		//if(){
+	unsigned int currentRow = localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].row;
+	unsigned int currentCol = localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].col;
+	Direction currentDir = localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].dir;
 
-		//}
-
-
+	if(currentDir == Direction::EAST || currentDir == Direction::WEST){
+		//Check to see which direction is towards goal
+		if(currentRow > exitPos.row){
+			//Check to see if tile is open
+			if(grid[currentRow + 1][currentCol] == SquareType::FREE_SQUARE){
+				currentDir = Direction::NORTH;
+			}
+			else{
+				currentDir = Direction::SOUTH;
+			}
+		}
+		else{
+			//Check to see if tile is open
+			if(grid[currentRow - 1][currentCol] == SquareType::FREE_SQUARE){
+				currentDir = Direction::SOUTH;
+			}
+			else{
+				currentDir = Direction::NORTH;
+			}
+		}
 	}
-	else if(strncmp(localTraveler.directionOfHead,"North",2)== 0 || 
-	strncmp(localTraveler.directionOfHead,"South",2)== 0){
-
-
-
+	else{
+		//Check to see which direction is towards goal
+		if(currentCol > exitPos.col){
+			//Check to see if tile is open
+			if(grid[currentRow][currentCol + 1] == SquareType::FREE_SQUARE){
+				currentDir = Direction::WEST;
+			}
+			else{
+				currentDir = Direction::EAST;
+			}
+		}
+		else{
+			//Check to see if tile is open
+			if(grid[currentRow][currentCol - 1] == SquareType::FREE_SQUARE){
+				currentDir = Direction::EAST;
+			}
+			else{
+				currentDir = Direction::WEST;
+			}
+		}
 	}
-
+	localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].dir = currentDir;
 }
 
 
