@@ -33,6 +33,7 @@ Direction newDirection(Direction forbiddenDir = Direction::NUM_DIRECTIONS);
 TravelerSegment newTravelerSegment(const TravelerSegment& currentSeg, bool& canAdd);
 void generateWalls(void);
 void generatePartitions(void);
+void* singleThreadFunc(void* args);
 void* threadFunc(void* args);
 bool checkNextSquare(struct TravelerToPass *localTraveler, Direction currentDir);
 void pathFinding(struct TravelerToPass *localTraveler);
@@ -327,9 +328,9 @@ void initializeApplication(void)
 		unsigned int numAddSegments = segmentNumberGenerator(engine);
 		TravelerSegment currSeg = traveler.segmentList[0];
 		bool canAddSegment = true;
-		cout << "Traveler " << k << " at (row=" << pos.row << ", col=" <<
-		pos.col << "), direction: " << dirStr(dir) << ", with up to " << numAddSegments << " additional segments" << endl;
-		cout << "\t";
+		//cout << "Traveler " << k << " at (row=" << pos.row << ", col=" <<
+		//pos.col << "), direction: " << dirStr(dir) << ", with up to " << numAddSegments << " additional segments" << endl;
+		//cout << "\t";
 
 		traveler.numberOfSegments = numAddSegments;
 
@@ -340,10 +341,10 @@ void initializeApplication(void)
 			{
 				traveler.segmentList.push_back(newSeg);
 				currSeg = newSeg;
-				cout << dirStr(newSeg.dir) << "  ";
+				//cout << dirStr(newSeg.dir) << "  ";
 			}
 		}
-		cout << endl;
+		//cout << endl;
 
 		for (unsigned int c=0; c<4; c++)
 			traveler.rgba[c] = travelerColor[k][c];
@@ -354,6 +355,20 @@ void initializeApplication(void)
 	int p = fork();
 
 	if (p==0){
+
+		//SINGLE TRAVELER
+		pthread_t thread_id;
+
+		struct TravelerToPass singleTraveler;
+		singleTraveler.travelersPassed = &travelerList;
+		singleTraveler.travelerIdx = 0;
+		singleTraveler.directionOfHead = (char *)"East";
+	
+
+		pthread_create(&thread_id, NULL, &singleThreadFunc, &singleTraveler);
+
+
+		//MULTIPLE TRAVELERS
 		TravelerToPass travelers[numTravelers];
 		pthread_t th[numTravelers];
 
@@ -383,6 +398,56 @@ void initializeApplication(void)
 	}
 }
 
+
+void* singleThreadFunc(void* args){
+	
+	TravelerToPass *localTraveler = (TravelerToPass *)args; 
+	bool goalReached = false;
+	unsigned int currentRow, currentCol;
+	int count = 0;
+	
+	printf("Enter Thread Func\n");
+
+	while(goalReached != true){
+		currentRow = localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].row;
+		currentCol = localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].col;
+		
+		printf("%d \n", count);
+
+		if(currentRow == exitPos.row && currentCol == exitPos.col){
+			goalReached = true;
+		}
+		if(currentRow > exitPos.row){
+			localTraveler->travelersPassed = &travelerList;
+			localTraveler->travelerIdx = 0;
+			localTraveler->directionOfHead =(char *)"North";
+			moveTraveler(localTraveler);
+			
+		}
+		else if (currentRow < exitPos.row){
+			localTraveler->travelersPassed = &travelerList;
+			localTraveler->travelerIdx = 0;
+			localTraveler->directionOfHead =(char *)"South";
+			moveTraveler(localTraveler);
+		}
+		//Check east/west movement
+		if(currentCol > exitPos.col){
+			localTraveler->travelersPassed = &travelerList;
+			localTraveler->travelerIdx = 0;
+			localTraveler->directionOfHead =(char *)"West";
+			moveTraveler(localTraveler);
+		}
+		else if (currentCol < exitPos.row){
+			localTraveler->travelersPassed = &travelerList;
+			localTraveler->travelerIdx = 0;
+			localTraveler->directionOfHead =(char *)"East";
+			moveTraveler(localTraveler);
+		}
+		count ++;
+	}
+	printf("Single Thread Func Complete\n");
+	return 0;
+}
 
 //THREAD FUNC
 //NOTES: KEEP CHECKING IF THERE IS A WALL IN FIRST DIRECTION IF NOT TRAVELING TOWARDS GOAL
@@ -417,7 +482,7 @@ void* threadFunc(void* args){
 			rowDir = Direction::NORTH;
 			rowMove = true;
 		}
-		else if (currentRow > exitPos.row){
+		else if (currentRow < exitPos.row){
 			rowDir = Direction::SOUTH;
 			rowMove = true;
 		}
@@ -430,7 +495,7 @@ void* threadFunc(void* args){
 			colDir = Direction::WEST;
 			colMove = true;
 		}
-		else if (currentRow > exitPos.row){
+		else if (currentCol < exitPos.row){
 			colDir = Direction::EAST;
 			colMove = true;
 		}
