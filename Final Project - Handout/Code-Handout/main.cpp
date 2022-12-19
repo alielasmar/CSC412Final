@@ -13,6 +13,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <cstring>
+#include <unistd.h>
 //
 #include "gl_frontEnd.h"
 //
@@ -32,9 +33,9 @@ Direction newDirection(Direction forbiddenDir = Direction::NUM_DIRECTIONS);
 TravelerSegment newTravelerSegment(const TravelerSegment& currentSeg, bool& canAdd);
 void generateWalls(void);
 void generatePartitions(void);
-void threadFunc(struct TravelerToPass localTraveler);
-bool checkNextSquare(struct TravelerToPass localTraveler, Direction currentDir);
-void pathFinding(struct TravelerToPass localTraveler);
+void* threadFunc(void* args);
+bool checkNextSquare(struct TravelerToPass *localTraveler, Direction currentDir);
+void pathFinding(struct TravelerToPass *localTraveler);
 
 //==================================================================================
 //	Application-level global variables
@@ -85,29 +86,28 @@ uniform_int_distribution<unsigned int> colGenerator;
 //==================================================================================
 
 
-void moveTraveler(struct TravelerToPass localTraveler){
+void moveTraveler(struct TravelerToPass *localTraveler){
+	for(int i = localTraveler->travelersPassed[0][localTraveler->travelerIdx].numberOfSegments; i > 0; i--){
+		localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[i].col = localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[i-1].col;
+		localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[i].row = localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[i-1].row;
+		localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[i].dir = localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[i-1].dir;
+	}
+	if(strncmp(localTraveler->directionOfHead,"East",2)== 0){
+		localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].dir = Direction::EAST;
+		localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].col++;
 
-	for(int i = localTraveler.travelersPassed[0][localTraveler.travelerIdx].numberOfSegments; i > 0; i--){
-		localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[i].col = localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[i-1].col;
-		localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[i].row = localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[i-1].row;
-		localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[i].dir = localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[i-1].dir;
 	}
-	if(strncmp(localTraveler.directionOfHead,"East",2)== 0){
-		localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].dir = Direction::EAST;
-		localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].col++;
-
+	if(strncmp(localTraveler->directionOfHead,"West",2)== 0){
+		localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].dir = Direction::WEST;
+		localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].col--;
 	}
-	if(strncmp(localTraveler.directionOfHead,"West",2)== 0){
-		localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].dir = Direction::WEST;
-		localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].col--;
+	if(strncmp(localTraveler->directionOfHead,"South",2)== 0){
+		localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].dir = Direction::SOUTH ;
+		localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].row++;
 	}
-	if(strncmp(localTraveler.directionOfHead,"South",2)== 0){
-		localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].dir = Direction::SOUTH ;
-		localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].row++;
-	}
-	if(strncmp(localTraveler.directionOfHead,"North",2)== 0){
-		localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].dir = Direction::NORTH ;
-		localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].row--;
+	if(strncmp(localTraveler->directionOfHead,"North",2)== 0){
+		localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].dir = Direction::NORTH ;
+		localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].row--;
 	}
 /*
 	std::cout<<" Traveler 0 Segment 0 at (row = " <<localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].row
@@ -173,7 +173,7 @@ void handleKeyboardEvent(unsigned char c, int x, int y)
 			travelerToPass.travelersPassed =&travelerList;
 			travelerToPass.travelerIdx = 0;
 			travelerToPass.directionOfHead =(char *)"East";
-			moveTraveler(travelerToPass);
+			moveTraveler(&travelerToPass);
 			speedupTravelers();
 			ok = 1;
 			//travelerList = travelerToPass.travelersPassed;
@@ -242,7 +242,7 @@ int main(int argc, char* argv[])
 	initializeApplication();
 
 	launchTime = time(NULL);
-
+	
 	//	Now we enter the main loop of the program and to a large extend
 	//	"lose control" over its execution.  The callback functions that 
 	//	we set up earlier will be called when the corresponding event
@@ -308,7 +308,7 @@ void initializeApplication(void)
 	//	Generate walls and partitions
 	generateWalls();
 	generatePartitions();
-	
+
 	//	Initialize traveler info structs
 	//	You will probably need to replace/complete this as you add thread-related data
 	float** travelerColor = createTravelerColors(numTravelers);
@@ -351,10 +351,36 @@ void initializeApplication(void)
 		travelerList.push_back(traveler);
 	}
 	
-	//	free array of colors
-	for (unsigned int k=0; k<numTravelers; k++)
-		delete []travelerColor[k];
-	delete []travelerColor;
+	int p = fork();
+
+	if (p==0){
+		TravelerToPass travelers[numTravelers];
+		pthread_t th[numTravelers];
+
+		for (unsigned int i = 0; i < numTravelers; i++){
+			struct TravelerToPass currentTraveler;
+			currentTraveler.travelersPassed = &travelerList;
+			currentTraveler.travelerIdx = i;
+			currentTraveler.directionOfHead = (char *)"East";
+			travelers[i] = currentTraveler;
+		}
+
+		for (unsigned int j = 0; j < numTravelers; j++){
+			pthread_create(&th[j], NULL, &threadFunc, &travelers[j]);
+		}
+
+		//Wait for threads to finish
+		for(unsigned int i = 0; i < numTravelers; i++){
+			pthread_join(th[i], NULL);
+			numTravelersDone ++;
+		}
+	}
+	else{
+		//	free array of colors
+		for (unsigned int k=0; k<numTravelers; k++)
+			delete []travelerColor[k];
+		delete []travelerColor;
+	}
 }
 
 
@@ -368,17 +394,24 @@ void initializeApplication(void)
 //   Else if (Wall) {pathFinding() }
 //
 //}
-void threadFunc(struct TravelerToPass localTraveler){
+void* threadFunc(void* args){
+	TravelerToPass *localTraveler = (TravelerToPass *)args; 
+
 	bool goalReached = false;
 	bool movingToGoal, colMove, rowMove, isNextFree;
 	unsigned int currentRow, currentCol;
 	Direction currentDir, colDir, rowDir;
-
+	
 	while(goalReached != true){
-		currentRow = localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].row;
-		currentCol = localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].col;
-		currentDir = localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].dir;
+		currentRow = localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].row;
+		currentCol = localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].col;
+		currentDir = localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].dir;
 		
+		
+		if(currentRow == exitPos.row && currentCol == exitPos.col){
+			goalReached = true;
+		}
+
 		//Check north/south movement
 		if(currentRow > exitPos.row){
 			rowDir = Direction::NORTH;
@@ -425,12 +458,12 @@ void threadFunc(struct TravelerToPass localTraveler){
 		else{
 			if(checkNextSquare(localTraveler, rowDir) == true){
 				//Change the direction of the traveler's head and move the traveler
-				localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].dir = rowDir;
+				localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].dir = rowDir;
 				moveTraveler(localTraveler);
 			}
 			else if(checkNextSquare(localTraveler, colDir) == true){
 				//Change the direction of the traveler's head and move the traveler
-				localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].dir = colDir;
+				localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].dir = colDir;
 				moveTraveler(localTraveler);
 			}
 			else if(checkNextSquare(localTraveler, currentDir) == true){
@@ -441,17 +474,13 @@ void threadFunc(struct TravelerToPass localTraveler){
 				pathFinding(localTraveler);
 			}
 		}
-		
-
-
-		pathFinding(localTraveler);
-		
 	}
+	return 0;
 }
 
-bool checkNextSquare(struct TravelerToPass localTraveler, Direction currentDir){
-	unsigned int currentRow = localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].row;
-	unsigned int currentCol = localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].col;
+bool checkNextSquare(struct TravelerToPass *localTraveler, Direction currentDir){
+	unsigned int currentRow = localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].row;
+	unsigned int currentCol = localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].col;
 
 	if (currentDir == Direction::EAST){
 		if(grid[currentRow][currentCol + 1] == SquareType::FREE_SQUARE){
@@ -490,10 +519,10 @@ bool checkNextSquare(struct TravelerToPass localTraveler, Direction currentDir){
 
 //Use struct
 //Get the traveler to goal so give it a direction
-void pathFinding(struct TravelerToPass localTraveler){
-	unsigned int currentRow = localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].row;
-	unsigned int currentCol = localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].col;
-	Direction currentDir = localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].dir;
+void pathFinding(struct TravelerToPass *localTraveler){
+	unsigned int currentRow = localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].row;
+	unsigned int currentCol = localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].col;
+	Direction currentDir = localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].dir;
 
 	if(currentDir == Direction::EAST || currentDir == Direction::WEST){
 		//Check to see which direction is towards goal
@@ -537,7 +566,7 @@ void pathFinding(struct TravelerToPass localTraveler){
 			}
 		}
 	}
-	localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].dir = currentDir;
+	localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].dir = currentDir;
 }
 
 
