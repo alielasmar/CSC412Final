@@ -34,10 +34,9 @@ Direction newDirection(Direction forbiddenDir = Direction::NUM_DIRECTIONS);
 TravelerSegment newTravelerSegment(const TravelerSegment& currentSeg, bool& canAdd);
 void generateWalls(void);
 void generatePartitions(void);
-void* singleThreadFunc(void* args);
-void* threadFunc(void* args);
-bool checkNextSquare(struct TravelerToPass *localTraveler, Direction currentDir);
-void pathFinding(struct TravelerToPass *localTraveler);
+void singleThreadFunc(struct Traveler *localTraveler);
+Direction findMoveDirection(struct Traveler *localTraveler);
+bool checkNextSquare(struct Traveler *localTraveler, Direction currentDir);
 
 //==================================================================================
 //	Application-level global variables
@@ -56,7 +55,8 @@ unsigned int numLiveThreads = 0;		//	the number of live traveler threads
 vector<Traveler> travelerList;
 vector<SlidingPartition> partitionList;
 GridPosition	exitPos;	//	location of the exit
-vector<thread> threadList;
+vector<thread*> threadList; //  list of pointers to threads
+vector<Direction> possibleDirections;   //  List of possible directions the traveler can move
 
 //	travelers' sleep time between moves (in microseconds)
 const int MIN_SLEEP_TIME = 1000;
@@ -185,7 +185,6 @@ void handleKeyboardEvent(unsigned char c, int x, int y)
 			moveTravelerE(&travelerList[0]);
 			speedupTravelers();
 			ok = 1;
-			//travelerList = travelerToPass.travelersPassed;
 			break;
 
 		default:
@@ -199,96 +198,6 @@ void handleKeyboardEvent(unsigned char c, int x, int y)
 }
 
 
-
-bool canMove(struct Traveler *currentTraveler){
-
-	unsigned int rowPos = currentTraveler->segmentList[0].row;
-	unsigned int colPos = currentTraveler->segmentList[0].col;
-	
-	if(grid[rowPos - 1][colPos] == SquareType::FREE_SQUARE && rowPos - 1 > 0 ){
-		return true;
-	}
-	else if (grid[rowPos + 1][colPos] == SquareType::FREE_SQUARE && rowPos + 1 < numRows){
-		return true;
-	}
-	else if(grid[rowPos][colPos - 1] == SquareType::FREE_SQUARE && colPos - 1 > 0){
-		return true;
-	}
-	else if(grid[rowPos][colPos + 1] == SquareType::FREE_SQUARE && colPos + 1 < numCols){
-		return true;
-	}
-	return false;
-}
-
-
-
-void move(struct Traveler *currentTraveler){
- 	unsigned int rowPos = currentTraveler->segmentList[0].row;
-	unsigned int colPos = currentTraveler->segmentList[0].col;
-	vector<Direction> possibleMoves;
-
-	//TRAVERER OF SIZE 1 handeling
-	if(grid[rowPos - 1][colPos] == SquareType::FREE_SQUARE && rowPos - 1 > 0 ){
-		possibleMoves.push_back(Direction::NORTH);
-	}
-	if (grid[rowPos + 1][colPos] == SquareType::FREE_SQUARE && rowPos + 1 < numRows){
-		possibleMoves.push_back(Direction::SOUTH);
-	}
-	if(grid[rowPos][colPos - 1] == SquareType::FREE_SQUARE && colPos - 1 > 0){
-		possibleMoves.push_back(Direction::WEST);
-	}
-	if(grid[rowPos][colPos + 1] == SquareType::FREE_SQUARE && colPos + 1 < numCols){
-		possibleMoves.push_back(Direction::EAST);
-	}
-	srand(time(0));
-
-	for(int i = currentTraveler->numberOfSegments; i > 0; i--){
-		currentTraveler->segmentList[i].col = currentTraveler->segmentList[i-1].col;
-		currentTraveler->segmentList[i].row = currentTraveler->segmentList[i-1].row;
-		currentTraveler->segmentList[i].dir = currentTraveler->segmentList[i-1].dir;
-	}
-
-	currentTraveler->segmentList[0].dir = possibleMoves[rand() % possibleMoves.size()];
-
-	if (currentTraveler->segmentList[0].dir == Direction::EAST){
-		currentTraveler->segmentList[0].col++;
-	}
-	else if (currentTraveler->segmentList[0].dir == Direction::WEST){
-		currentTraveler->segmentList[0].col--;
-	}
-	else if(currentTraveler->segmentList[0].dir == Direction::SOUTH){
-		currentTraveler->segmentList[0].row++;
-	}
-	else if(currentTraveler->segmentList[0].dir == Direction::NORTH){
-		currentTraveler->segmentList[0].row--;
-	}
-	printf("Traveler %d:    Row: %d      Col: %d\n", currentTraveler->index ,currentTraveler->segmentList[0].row, currentTraveler->segmentList[0].col);
-}
-
-
-void* travelerThreadFunc(void* args){
-	Traveler *currentTraveler = (Traveler *)args;
-
-	bool keepMoving = true;
-	unsigned int rowPos, colPos;
-
-	while(keepMoving != false){
-		rowPos = currentTraveler->segmentList[0].row;
-		colPos = currentTraveler->segmentList[0].col;
-
-		if(rowPos == exitPos.row && colPos == exitPos.col){
-			keepMoving = false;
-		}
-		else if(canMove(currentTraveler) == false){
-			keepMoving = false;
-		}
-		else{
-			move(currentTraveler);
-			usleep(travelerSleepTime);
-		}
-	}
-	return 0;
-}
 
 //------------------------------------------------------------------------
 //	You shouldn't have to touch this one.  Definitely if you don't
@@ -312,100 +221,6 @@ void slowdownTravelers(void)
 	//	We can slow everything down to admistrative pace if we want.
 	travelerSleepTime = (12 * travelerSleepTime) / 10;
 }
-
-
-
-
-void newMove(int travPos){
-	unsigned int rowPos = travelerList[travPos].segmentList[0].row;
-	unsigned int colPos = travelerList[travPos].segmentList[0].col;
-	vector<Direction> possibleMoves;
-
-	//TRAVERER OF SIZE 1 handeling
-	if(grid[rowPos - 1][colPos] == SquareType::FREE_SQUARE && rowPos - 1 > 0 ){
-		possibleMoves.push_back(Direction::NORTH);
-	}
-	if (grid[rowPos + 1][colPos] == SquareType::FREE_SQUARE && rowPos + 1 < numRows){
-		possibleMoves.push_back(Direction::SOUTH);
-	}
-	if(grid[rowPos][colPos - 1] == SquareType::FREE_SQUARE && colPos - 1 > 0){
-		possibleMoves.push_back(Direction::WEST);
-	}
-	if(grid[rowPos][colPos + 1] == SquareType::FREE_SQUARE && colPos + 1 < numCols){
-		possibleMoves.push_back(Direction::EAST);
-	}
-	srand(time(0));
-
-	for(int i = travelerList[travPos].numberOfSegments; i > 0; i--){
-		travelerList[travPos].segmentList[i].col = travelerList[travPos].segmentList[i-1].col;
-		travelerList[travPos].segmentList[i].row = travelerList[travPos].segmentList[i-1].row;
-		travelerList[travPos].segmentList[i].dir = travelerList[travPos].segmentList[i-1].dir;
-	}
-
-	travelerList[travPos].segmentList[0].dir = possibleMoves[rand() % possibleMoves.size()];
-
-	if (travelerList[travPos].segmentList[0].dir == Direction::EAST){
-		travelerList[travPos].segmentList[0].col++;
-	}
-	else if (travelerList[travPos].segmentList[0].dir == Direction::WEST){
-		travelerList[travPos].segmentList[0].col--;
-	}
-	else if(travelerList[travPos].segmentList[0].dir == Direction::SOUTH){
-		travelerList[travPos].segmentList[0].row++;
-	}
-	else if(travelerList[travPos].segmentList[0].dir == Direction::NORTH){
-		travelerList[travPos].segmentList[0].row--;
-	}
-}
-
-
-bool newCanMove(int travPos){
-	unsigned int rowPos = travelerList[travPos].segmentList[0].row;
-	unsigned int colPos = travelerList[travPos].segmentList[0].col;
-	
-	if(grid[rowPos - 1][colPos] == SquareType::FREE_SQUARE && rowPos - 1 > 0 ){
-		return true;
-	}
-	else if (grid[rowPos + 1][colPos] == SquareType::FREE_SQUARE && rowPos + 1 < numRows){
-		return true;
-	}
-	else if(grid[rowPos][colPos - 1] == SquareType::FREE_SQUARE && colPos - 1 > 0){
-		return true;
-	}
-	else if(grid[rowPos][colPos + 1] == SquareType::FREE_SQUARE && colPos + 1 < numCols){
-		return true;
-	}
-	return false;
-}
-
-
-
-
-
-
-void newThreadFunc(int travPos){
-	bool keepMoving = true;
-	unsigned int rowPos, colPos;
-
-	while(keepMoving != false){
-		rowPos = travelerList[travPos].segmentList[0].row;
-		colPos = travelerList[travPos].segmentList[0].col;
-
-		if(rowPos == exitPos.row && colPos == exitPos.col){
-			keepMoving = false;
-		}
-		else if(newCanMove(travPos) == false){
-			keepMoving = false;
-		}
-		else{
-			newMove(travPos);
-			usleep(travelerSleepTime);
-		}
-		printf("Traveler %d:    Row: %d      Col: %d\n", travPos ,travelerList[travPos].segmentList[0].row, 
-		travelerList[travPos].segmentList[0].col);
-	}
-}
-
 
 
 
@@ -546,71 +361,19 @@ void initializeApplication(void)
 		travelerList.push_back(traveler);
 	}
 
-	//int passToThread = 0;
+	possibleDirections.push_back(Direction::NORTH);
+	possibleDirections.push_back(Direction::SOUTH);
+	possibleDirections.push_back(Direction::EAST);
+	possibleDirections.push_back(Direction::WEST);
 
-	//thread firstThread(newThreadFunc, passToThread);
-
-
-	//firstThread.join();
-	/*
-	int p = fork();
-
-	if (p==0){
-		
-		pthread_t thread_id;
-		
-		pthread_create(&thread_id, NULL, &travelerThreadFunc, &travelerList[0]);
-
-		bool notDone = true;
-		while (notDone == true){
-			usleep(travelerSleepTime);
-		}
-		
-	
-	}
-
-	
-	//SINGLE TRAVELER
-	pthread_t thread_id;
-
-	struct TravelerToPass singleTraveler;
-	singleTraveler.travelersPassed = &travelerList;
-	singleTraveler.travelerIdx = 0;
-	singleTraveler.directionOfHead = (char *)"East";
-	
-
-	pthread_create(&thread_id, NULL, &singleThreadFunc, &singleTraveler);
-
-	pthread_join(thread_id, NULL);
-
-	//MULTIPLE TRAVELERS
-	TravelerToPass travelers[numTravelers];
-	pthread_t th[numTravelers];
-
-	for (unsigned int i = 0; i < numTravelers; i++){
-		struct TravelerToPass currentTraveler;
-		currentTraveler.travelersPassed = &travelerList;
-		currentTraveler.travelerIdx = i;
-		currentTraveler.directionOfHead = (char *)"East";
-		travelers[i] = currentTraveler;
-	}
-
-	for (unsigned int j = 0; j < numTravelers; j++){
-		pthread_create(&th[j], NULL, &threadFunc, &travelers[j]);
-	}
-
-	//Wait for threads to finish
+	thread** travelerThreads = new thread*[numTravelers];
 	for(unsigned int i = 0; i < numTravelers; i++){
-		pthread_join(th[i], NULL);
-		numTravelersDone ++;
-		
+		travelerThreads[i] = new thread(singleThreadFunc, &travelerList[i]);
+		threadList.push_back(travelerThreads[i]);
+		numLiveThreads++;
 	}
-	*/
-	pthread_t thread_id;
 
-	//pthread_create(&thread_id, NULL, &singleThreadFunc, &travelerList[0]);
 
-	//pthread_join(thread_id, NULL);
 	
 	//	free array of colors
 	for (unsigned int k=0; k<numTravelers; k++)
@@ -620,25 +383,45 @@ void initializeApplication(void)
 }
 
 
-void* singleThreadFunc(void* args){
-	Traveler * localTraveler = (Traveler *) args;
+void singleThreadFunc(struct Traveler *localTraveler){
 
-	//TravelerToPass *localTraveler = (TravelerToPass *)args; 
 	bool goalReached = false;
 	unsigned int currentRow, currentCol;
-	int count = 0;
 	
-	//printf("Enter Thread Func\n");
-
 	while(goalReached != true){
 		currentRow = localTraveler->segmentList[0].row;
 		currentCol = localTraveler->segmentList[0].col;
 
-		//printf("%d \n", count);
 
 		if(currentRow == exitPos.row && currentCol == exitPos.col){
 			goalReached = true;
 		}
+		
+
+		/*
+		Direction newDir = findMoveDirection(localTraveler);
+
+		if(newDir == Direction::NORTH){
+			moveTravelerN(localTraveler);
+			usleep(travelerSleepTime);
+		}
+		else if(newDir == Direction::SOUTH){
+			moveTravelerS(localTraveler);
+			usleep(travelerSleepTime);
+		}
+		else if(newDir == Direction::EAST){
+			moveTravelerE(localTraveler);
+			usleep(travelerSleepTime);
+		}
+		else if(newDir == Direction::WEST){
+			moveTravelerW(localTraveler);
+			usleep(travelerSleepTime);
+		}
+		else{
+			goalReached = true;
+		}
+		*/
+		
 		if(currentRow > exitPos.row){
 			moveTravelerN(localTraveler);
 			usleep(travelerSleepTime);
@@ -648,7 +431,7 @@ void* singleThreadFunc(void* args){
 			usleep(travelerSleepTime);
 		}
 		//Check east/west movement
-		if(currentCol > exitPos.col){
+		else if(currentCol > exitPos.col){
 			moveTravelerW(localTraveler);
 			usleep(travelerSleepTime);
 		}
@@ -656,117 +439,55 @@ void* singleThreadFunc(void* args){
 			moveTravelerE(localTraveler);
 			usleep(travelerSleepTime);
 		}
-		count ++;
+		
 	}
-	//printf("Single Thread Func Complete\n");
-	return 0;
 }
 
-//THREAD FUNC
-//NOTES: KEEP CHECKING IF THERE IS A WALL IN FIRST DIRECTION IF NOT TRAVELING TOWARDS GOAL
-//MAKE SURE TO CHECK WALLS
-//
-//WHILE (Not Finished){
-//  WHILE(TRaveling towards goal) 
-//	 If(Not Blocked){ moveTraveler() }
-//   Else if (Wall) {pathFinding() }
-//
-//}
 /*
-void* threadFunc(void* args){
-	TravelerToPass *localTraveler = (TravelerToPass *)args; 
+Direction findMoveDirection(struct Traveler *localTraveler){
+	vector<Direction> canMove;
+	Direction behind;
+	int possibleDir = 0;
 
-	bool goalReached = false;
-	bool movingToGoal, colMove, rowMove, isNextFree;
-	unsigned int currentRow, currentCol;
-	Direction currentDir, colDir, rowDir;
+	//Find direction that is behind it
+	if(localTraveler->segmentList[0].dir == Direction::NORTH){
+		behind = Direction::SOUTH;
+	}
+	else if(localTraveler->segmentList[0].dir == Direction::SOUTH){
+		behind = Direction::NORTH;
+	}
+	else if(localTraveler->segmentList[0].dir == Direction::EAST){
+		behind = Direction::WEST;
+	}
+	else{
+		behind = Direction::EAST;
+	}
 	
-	while(goalReached != true){
-		currentRow = localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].row;
-		currentCol = localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].col;
-		currentDir = localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].dir;
-		
-		
-		if(currentRow == exitPos.row && currentCol == exitPos.col){
-			goalReached = true;
-		}
-
-		//Check north/south movement
-		if(currentRow > exitPos.row){
-			rowDir = Direction::NORTH;
-			rowMove = true;
-		}
-		else if (currentRow < exitPos.row){
-			rowDir = Direction::SOUTH;
-			rowMove = true;
-		}
-		else{
-			rowMove = false;
-			rowDir = Direction::WEST;
-		}
-		//Check east/west movement
-		if(currentCol > exitPos.col){
-			colDir = Direction::WEST;
-			colMove = true;
-		}
-		else if (currentCol < exitPos.col){
-			colDir = Direction::EAST;
-			colMove = true;
-		}
-		else{
-			colMove = false;
-			colDir = Direction::NORTH;
-		}
-		
-		//Check to see if Traveler is moving towards the goal
-		if(currentDir == colDir && colMove == true){
-			movingToGoal = true;
-		}
-		else if(currentDir == rowDir && rowMove == true){
-			movingToGoal = true;
-		}
-		
-		
-		//Check for wall then move if traveler is moving in correct direction
-		if(movingToGoal == true){
-			isNextFree = checkNextSquare(localTraveler, currentDir);
-			if(isNextFree == true){
-				moveTraveler(localTraveler);
-			}
-		}
-		else{
-			if(checkNextSquare(localTraveler, rowDir) == true){
-				//Change the direction of the traveler's head and move the traveler
-				localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].dir = rowDir;
-				moveTraveler(localTraveler);
-			}
-			else if(checkNextSquare(localTraveler, colDir) == true){
-				//Change the direction of the traveler's head and move the traveler
-				localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].dir = colDir;
-				moveTraveler(localTraveler);
-			}
-			else if(checkNextSquare(localTraveler, currentDir) == true){
-				//Move the traveler
-				moveTraveler(localTraveler);
-			}
-			else{
-				pathFinding(localTraveler);
-			}
+	//Find directions it can travel
+	for(unsigned int i = 0; i < possibleDirections.size(); i++){
+		if(possibleDirections[i] != behind && checkNextSquare(localTraveler, possibleDirections[i]) == true){
+			canMove.push_back(possibleDirections[i]);
+			possibleDir ++;
 		}
 	}
-	//printf("Multithread Complete\n");
-	return 0;
-}*/
+
+	//Pick a direction and and travel or say it can't move
+	if(possibleDir != 0){
+		return canMove[0];
+	}
+	else{
+		return;
+	}
+}
+*/
 
 bool checkNextSquare(struct Traveler *localTraveler, Direction currentDir){
-	//unsigned int currentRow = localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].row;
-	//unsigned int currentCol = localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].col;
 
 	unsigned int currentRow = localTraveler->segmentList[0].row;
 	unsigned int currentCol = localTraveler->segmentList[0].col;
 
 	if (currentDir == Direction::EAST){
-		if(grid[currentRow][currentCol + 1] == SquareType::FREE_SQUARE){
+		if(grid[currentCol + 1][currentRow] == SquareType::FREE_SQUARE && currentCol + 1 < numCols){
 			return true;
 		}
 		else{
@@ -774,7 +495,7 @@ bool checkNextSquare(struct Traveler *localTraveler, Direction currentDir){
 		}
 	}
 	else if(currentDir == Direction::WEST){
-		if(grid[currentRow][currentCol - 1] == SquareType::FREE_SQUARE){
+		if(grid[currentCol - 1][currentRow] == SquareType::FREE_SQUARE && currentCol - 1 > 0){
 			return true;
 		}
 		else{
@@ -782,7 +503,7 @@ bool checkNextSquare(struct Traveler *localTraveler, Direction currentDir){
 		}
 	}
 	else if(currentDir == Direction::NORTH){
-		if(grid[currentRow + 1][currentCol] == SquareType::FREE_SQUARE){
+		if(grid[currentCol][currentRow - 1] == SquareType::FREE_SQUARE && currentRow - 1 > 0){
 			return true;
 		}
 		else{
@@ -790,67 +511,13 @@ bool checkNextSquare(struct Traveler *localTraveler, Direction currentDir){
 		}
 	}
 	else{
-		if(grid[currentRow - 1][currentCol] == SquareType::FREE_SQUARE){
+		if(grid[currentCol][currentRow + 1] == SquareType::FREE_SQUARE && currentRow + 1 < 0){
 			return true;
 		}
 		else{
 			return false;
 		}
 	}
-}
-
-
-//Use struct
-//Get the traveler to goal so give it a direction
-void pathFinding(struct Traveler *localTraveler){
-	unsigned int currentRow = localTraveler->segmentList[0].row;
-	unsigned int currentCol = localTraveler->segmentList[0].col;
-	Direction currentDir = localTraveler->segmentList[0].dir;
-
-	if(currentDir == Direction::EAST || currentDir == Direction::WEST){
-		//Check to see which direction is towards goal
-		if(currentRow > exitPos.row){
-			//Check to see if tile is open
-			if(grid[currentRow + 1][currentCol] == SquareType::FREE_SQUARE){
-				currentDir = Direction::NORTH;
-			}
-			else{
-				currentDir = Direction::SOUTH;
-			}
-		}
-		else{
-			//Check to see if tile is open
-			if(grid[currentRow - 1][currentCol] == SquareType::FREE_SQUARE){
-				currentDir = Direction::SOUTH;
-			}
-			else{
-				currentDir = Direction::NORTH;
-			}
-		}
-	}
-	else{
-		//Check to see which direction is towards goal
-		if(currentCol > exitPos.col){
-			//Check to see if tile is open
-			if(grid[currentRow][currentCol + 1] == SquareType::FREE_SQUARE){
-				currentDir = Direction::WEST;
-			}
-			else{
-				currentDir = Direction::EAST;
-			}
-		}
-		else{
-			//Check to see if tile is open
-			if(grid[currentRow][currentCol - 1] == SquareType::FREE_SQUARE){
-				currentDir = Direction::EAST;
-			}
-			else{
-				currentDir = Direction::WEST;
-			}
-		}
-	}
-	localTraveler->segmentList[0].dir = currentDir;
-	//localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].dir = currentDir;
 }
 
 
