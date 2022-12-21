@@ -37,6 +37,8 @@ void generatePartitions(void);
 void singleThreadFunc(struct Traveler *localTraveler);
 Direction findMoveDirection(struct Traveler *localTraveler);
 bool checkNextSquare(struct Traveler *localTraveler, Direction currentDir);
+void moveTraveler(struct Traveler *localTraveler);
+void moveDirection(struct Traveler *localTraveler, Direction currentDir);
 
 //==================================================================================
 //	Application-level global variables
@@ -170,6 +172,9 @@ void handleKeyboardEvent(unsigned char c, int x, int y)
 	{
 		//	'esc' to quit
 		case 27:
+			for(unsigned int i = 0; i < numTravelers; i++){
+				threadList[i]->join();
+			}
 			exit(0);
 			break;
 
@@ -392,36 +397,14 @@ void singleThreadFunc(struct Traveler *localTraveler){
 		currentRow = localTraveler->segmentList[0].row;
 		currentCol = localTraveler->segmentList[0].col;
 
+		if(goalReached == false){
+			if(currentRow == exitPos.row && currentCol == exitPos.col){
+				goalReached = true;
+			}
 
-		if(currentRow == exitPos.row && currentCol == exitPos.col){
-			goalReached = true;
+			moveTraveler(localTraveler);
 		}
-		
-
 		/*
-		Direction newDir = findMoveDirection(localTraveler);
-
-		if(newDir == Direction::NORTH){
-			moveTravelerN(localTraveler);
-			usleep(travelerSleepTime);
-		}
-		else if(newDir == Direction::SOUTH){
-			moveTravelerS(localTraveler);
-			usleep(travelerSleepTime);
-		}
-		else if(newDir == Direction::EAST){
-			moveTravelerE(localTraveler);
-			usleep(travelerSleepTime);
-		}
-		else if(newDir == Direction::WEST){
-			moveTravelerW(localTraveler);
-			usleep(travelerSleepTime);
-		}
-		else{
-			goalReached = true;
-		}
-		*/
-		
 		if(currentRow > exitPos.row){
 			moveTravelerN(localTraveler);
 			usleep(travelerSleepTime);
@@ -439,16 +422,96 @@ void singleThreadFunc(struct Traveler *localTraveler){
 			moveTravelerE(localTraveler);
 			usleep(travelerSleepTime);
 		}
-		
+		*/
 	}
 }
+
+
+
+void moveTraveler(struct Traveler *localTraveler){
+	vector<Direction> canMove;
+	Direction behind;
+	int moves = 0;
+	int currentRow = localTraveler->segmentList[0].row;
+	int currentCol = localTraveler->segmentList[0].col;
+	unsigned int northAdjustment = localTraveler->segmentList[0].row - 1;
+	unsigned int southAdjustment = localTraveler->segmentList[0].row + 1;
+	unsigned int westAdjustment = localTraveler->segmentList[0].col - 1;
+	unsigned int eastAdjustment = localTraveler->segmentList[0].col + 1;
+	
+
+	//Find direction that is behind it
+	if(localTraveler->segmentList[0].dir == Direction::NORTH){
+		behind = Direction::SOUTH;
+	}
+	else if(localTraveler->segmentList[0].dir == Direction::SOUTH){
+		behind = Direction::NORTH;
+	}
+	else if(localTraveler->segmentList[0].dir == Direction::EAST){
+		behind = Direction::WEST;
+	}
+	else{
+		behind = Direction::EAST;
+	}
+
+
+
+
+	if(Direction::NORTH != behind && northAdjustment > 0){
+		canMove.push_back(Direction::NORTH);
+		moves++;
+	}
+
+	if(Direction::SOUTH != behind && southAdjustment < numRows){
+		canMove.push_back(Direction::SOUTH);
+		moves++;
+	}
+
+	if(Direction::WEST != behind && westAdjustment > 0){
+		canMove.push_back(Direction::WEST);
+		moves++;
+	}
+
+	if(Direction::EAST != behind && eastAdjustment < numCols){
+		canMove.push_back(Direction::EAST);
+		moves++;
+	}
+
+	if(moves > 0){
+		moveDirection(localTraveler, canMove[rand() % moves]);
+	}
+
+}
+
+
+void moveDirection(struct Traveler *localTraveler, Direction currentDir){
+	if(currentDir == Direction::NORTH){
+		moveTravelerN(localTraveler);
+		usleep(travelerSleepTime);
+	}
+	else if(currentDir == Direction::SOUTH){
+		moveTravelerS(localTraveler);
+		usleep(travelerSleepTime);
+	}
+	else if(currentDir == Direction::EAST){
+		moveTravelerE(localTraveler);
+		usleep(travelerSleepTime);
+	}
+	else if(currentDir == Direction::WEST){
+		moveTravelerW(localTraveler);
+		usleep(travelerSleepTime);
+	}
+}
+
+
+
+
 
 /*
 Direction findMoveDirection(struct Traveler *localTraveler){
 	vector<Direction> canMove;
 	Direction behind;
 	int possibleDir = 0;
-
 	//Find direction that is behind it
 	if(localTraveler->segmentList[0].dir == Direction::NORTH){
 		behind = Direction::SOUTH;
@@ -470,7 +533,6 @@ Direction findMoveDirection(struct Traveler *localTraveler){
 			possibleDir ++;
 		}
 	}
-
 	//Pick a direction and and travel or say it can't move
 	if(possibleDir != 0){
 		return canMove[0];
@@ -779,7 +841,8 @@ void generatePartitions(void)
 		}
 		// case of a horizontal partition
 		else
-		{
+		
+{
 			goodPart = false;
 			
 			//	I try a few times before giving up
