@@ -164,6 +164,7 @@ void updateMessages(void)
 
 void handleKeyboardEvent(unsigned char c, int x, int y)
 {
+		pthread_t thread_id;
 
 	int ok = 0;
 
@@ -180,14 +181,18 @@ void handleKeyboardEvent(unsigned char c, int x, int y)
 
 		//	slowdown
 		case ',':
+			moveTravelerE(&travelerList[0]);
 			slowdownTravelers();
 			ok = 1;
 			break;
 
 		//	speedup
 		case '.':
-/*		185 moves traveler			*/			
-			moveTravelerE(&travelerList[0]);
+/*		185 moves traveler			*/		
+	pthread_create(&thread_id, NULL, &singleThreadFunc, &travelerList[0]);
+
+	pthread_join(thread_id, NULL);	
+			//moveTravelerE(&travelerList[0]);
 			speedupTravelers();
 			ok = 1;
 			break;
