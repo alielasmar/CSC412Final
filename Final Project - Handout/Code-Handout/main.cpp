@@ -99,21 +99,21 @@ void updatePos(struct Traveler * localTraveler){
 
 
 void moveTravelerN(struct Traveler * localTraveler){
-	updatePos(localTraveler);
+ 	updatePos(localTraveler);
 	localTraveler->segmentList[0].dir = Direction::NORTH;
 	localTraveler->segmentList[0].row--;
 }
 
 
 void moveTravelerS(struct Traveler * localTraveler){
-	updatePos(localTraveler);
+ 	updatePos(localTraveler);
 	localTraveler->segmentList[0].dir = Direction::SOUTH;
 	localTraveler->segmentList[0].row++;
 }
 
 
 void moveTravelerE(struct Traveler * localTraveler){
-	updatePos(localTraveler);
+ 	updatePos(localTraveler);
 	localTraveler->segmentList[0].dir = Direction::EAST;
 	localTraveler->segmentList[0].col++;
 
@@ -121,7 +121,7 @@ void moveTravelerE(struct Traveler * localTraveler){
 }
 
 void moveTravelerW(struct Traveler * localTraveler){
-	updatePos(localTraveler);
+ 	updatePos(localTraveler);
 	localTraveler->segmentList[0].dir = Direction::WEST;
 	localTraveler->segmentList[0].col--;
 
@@ -162,6 +162,7 @@ void updateMessages(void)
 
 void handleKeyboardEvent(unsigned char c, int x, int y)
 {
+
 	int ok = 0;
 
 
@@ -180,15 +181,8 @@ void handleKeyboardEvent(unsigned char c, int x, int y)
 
 		//	speedup
 		case '.':
-		//pthread
-/*		158-162 moves traveler			*/				
-
-			//travelerToPass.travelersPassed =&travelerList;
-			//travelerToPass.travelerIdx = 0;
-			//travelerToPass.directionOfHead =(char *)"East";
-			//moveTraveler(travelerToPass);
-			moveTravelerN(&travelerList[0]);
-
+/*		185 moves traveler			*/			
+			moveTravelerE(&travelerList[0]);
 			speedupTravelers();
 			ok = 1;
 			//travelerList = travelerToPass.travelersPassed;
@@ -207,6 +201,7 @@ void handleKeyboardEvent(unsigned char c, int x, int y)
 
 
 bool canMove(struct Traveler *currentTraveler){
+
 	unsigned int rowPos = currentTraveler->segmentList[0].row;
 	unsigned int colPos = currentTraveler->segmentList[0].col;
 	
@@ -228,7 +223,7 @@ bool canMove(struct Traveler *currentTraveler){
 
 
 void move(struct Traveler *currentTraveler){
-	unsigned int rowPos = currentTraveler->segmentList[0].row;
+ 	unsigned int rowPos = currentTraveler->segmentList[0].row;
 	unsigned int colPos = currentTraveler->segmentList[0].col;
 	vector<Direction> possibleMoves;
 
@@ -312,6 +307,7 @@ void speedupTravelers(void)
 
 void slowdownTravelers(void)
 {
+
 	//	increase sleep time by 20%.  No upper limit on sleep time.
 	//	We can slow everything down to admistrative pace if we want.
 	travelerSleepTime = (12 * travelerSleepTime) / 10;
@@ -388,7 +384,6 @@ bool newCanMove(int travPos){
 
 
 void newThreadFunc(int travPos){
-	
 	bool keepMoving = true;
 	unsigned int rowPos, colPos;
 
@@ -421,6 +416,7 @@ void newThreadFunc(int travPos){
 //------------------------------------------------------------------------
 int main(int argc, char* argv[])
 {
+
 	//	We know that the arguments  of the program  are going
 	//	to be the width (number of columns) and height (number of rows) of the
 	//	grid, the number of travelers, etc.
@@ -431,7 +427,6 @@ int main(int argc, char* argv[])
 	movesBeforeGrowth = atoi(argv[4]);
 	numLiveThreads = 0;
 	numTravelersDone = 0;
-
 	//	Even though we extracted the relevant information from the argument
 	//	list, I still need to pass argc and argv to the front-end init
 	//	function because that function passes them to glutInit, the required call
@@ -611,8 +606,11 @@ void initializeApplication(void)
 		
 	}
 	*/
+	pthread_t thread_id;
 
-	
+//	pthread_create(&thread_id, NULL, &singleThreadFunc, &travelerList[0]);
+
+//	pthread_join(thread_id, NULL);
 	
 	//	free array of colors
 	for (unsigned int k=0; k<numTravelers; k++)
@@ -623,8 +621,9 @@ void initializeApplication(void)
 
 
 void* singleThreadFunc(void* args){
-	
-	TravelerToPass *localTraveler = (TravelerToPass *)args; 
+	Traveler * localTraveler = (Traveler *) args;
+
+	//TravelerToPass *localTraveler = (TravelerToPass *)args; 
 	bool goalReached = false;
 	unsigned int currentRow, currentCol;
 	int count = 0;
@@ -632,33 +631,29 @@ void* singleThreadFunc(void* args){
 	//printf("Enter Thread Func\n");
 
 	while(goalReached != true){
-		currentRow = localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].row;
-		currentCol = localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].col;
-		
+		currentRow = localTraveler->segmentList[0].row;
+		currentCol = localTraveler->segmentList[0].col;
+
 		//printf("%d \n", count);
 
 		if(currentRow == exitPos.row && currentCol == exitPos.col){
 			goalReached = true;
 		}
 		if(currentRow > exitPos.row){
-			localTraveler->directionOfHead =(char *)"North";
-			moveTraveler(localTraveler);
+			moveTravelerN(localTraveler);
 			usleep(travelerSleepTime);
 		}
 		else if (currentRow < exitPos.row){
-			localTraveler->directionOfHead =(char *)"South";
-			moveTraveler(localTraveler);
+			moveTravelerS(localTraveler);
 			usleep(travelerSleepTime);
 		}
 		//Check east/west movement
 		if(currentCol > exitPos.col){
-			localTraveler->directionOfHead =(char *)"West";
-			moveTraveler(localTraveler);
+			moveTravelerW(localTraveler);
 			usleep(travelerSleepTime);
 		}
 		else if (currentCol < exitPos.col){
-			localTraveler->directionOfHead =(char *)"East";
-			moveTraveler(localTraveler);
+			moveTravelerE(localTraveler);
 			usleep(travelerSleepTime);
 		}
 		count ++;
@@ -677,6 +672,7 @@ void* singleThreadFunc(void* args){
 //   Else if (Wall) {pathFinding() }
 //
 //}
+/*
 void* threadFunc(void* args){
 	TravelerToPass *localTraveler = (TravelerToPass *)args; 
 
@@ -760,11 +756,14 @@ void* threadFunc(void* args){
 	}
 	//printf("Multithread Complete\n");
 	return 0;
-}
+}*/
 
-bool checkNextSquare(struct TravelerToPass *localTraveler, Direction currentDir){
-	unsigned int currentRow = localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].row;
-	unsigned int currentCol = localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].col;
+bool checkNextSquare(struct Traveler *localTraveler, Direction currentDir){
+	//unsigned int currentRow = localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].row;
+	//unsigned int currentCol = localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].col;
+
+	unsigned int currentRow = localTraveler->segmentList[0].row;
+	unsigned int currentCol = localTraveler->segmentList[0].col;
 
 	if (currentDir == Direction::EAST){
 		if(grid[currentRow][currentCol + 1] == SquareType::FREE_SQUARE){
@@ -803,10 +802,10 @@ bool checkNextSquare(struct TravelerToPass *localTraveler, Direction currentDir)
 
 //Use struct
 //Get the traveler to goal so give it a direction
-void pathFinding(struct TravelerToPass *localTraveler){
-	unsigned int currentRow = localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].row;
-	unsigned int currentCol = localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].col;
-	Direction currentDir = localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].dir;
+void pathFinding(struct Traveler *localTraveler){
+	unsigned int currentRow = localTraveler->segmentList[0].row;
+	unsigned int currentCol = localTraveler->segmentList[0].col;
+	Direction currentDir = localTraveler->segmentList[0].dir;
 
 	if(currentDir == Direction::EAST || currentDir == Direction::WEST){
 		//Check to see which direction is towards goal
@@ -850,7 +849,8 @@ void pathFinding(struct TravelerToPass *localTraveler){
 			}
 		}
 	}
-	localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].dir = currentDir;
+	localTraveler->segmentList[0].dir = currentDir;
+	//localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].dir = currentDir;
 }
 
 
@@ -896,6 +896,7 @@ Direction newDirection(Direction forbiddenDir)
 
 TravelerSegment newTravelerSegment(const TravelerSegment& currentSeg, bool& canAdd)
 {
+
 	TravelerSegment newSeg;
 	switch (currentSeg.dir)
 	{
@@ -968,6 +969,7 @@ TravelerSegment newTravelerSegment(const TravelerSegment& currentSeg, bool& canA
 
 void generateWalls(void)
 {
+
 	const unsigned int NUM_WALLS = (numCols+numRows)/4;
 
 	//	I decide that a wall length  cannot be less than 3  and not more than
