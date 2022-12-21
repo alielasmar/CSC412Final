@@ -14,6 +14,7 @@
 #include <ctime>
 #include <cstring>
 #include <unistd.h>
+#include <thread>
 //
 #include "gl_frontEnd.h"
 //
@@ -55,6 +56,7 @@ unsigned int numLiveThreads = 0;		//	the number of live traveler threads
 vector<Traveler> travelerList;
 vector<SlidingPartition> partitionList;
 GridPosition	exitPos;	//	location of the exit
+vector<thread> threadList;
 
 //	travelers' sleep time between moves (in microseconds)
 const int MIN_SLEEP_TIME = 1000;
@@ -154,6 +156,7 @@ void handleKeyboardEvent(unsigned char c, int x, int y)
 {
 	int ok = 0;
 	struct TravelerToPass travelerToPass;
+	struct Traveler passedTraveler;
 	switch (c)
 	{
 		//	'esc' to quit
@@ -191,6 +194,96 @@ void handleKeyboardEvent(unsigned char c, int x, int y)
 }
 
 
+
+bool canMove(struct Traveler *currentTraveler){
+	unsigned int rowPos = currentTraveler->segmentList[0].row;
+	unsigned int colPos = currentTraveler->segmentList[0].col;
+	
+	if(grid[rowPos - 1][colPos] == SquareType::FREE_SQUARE && rowPos - 1 > 0 ){
+		return true;
+	}
+	else if (grid[rowPos + 1][colPos] == SquareType::FREE_SQUARE && rowPos + 1 < numRows){
+		return true;
+	}
+	else if(grid[rowPos][colPos - 1] == SquareType::FREE_SQUARE && colPos - 1 > 0){
+		return true;
+	}
+	else if(grid[rowPos][colPos + 1] == SquareType::FREE_SQUARE && colPos + 1 < numCols){
+		return true;
+	}
+	return false;
+}
+
+
+
+void move(struct Traveler *currentTraveler){
+	unsigned int rowPos = currentTraveler->segmentList[0].row;
+	unsigned int colPos = currentTraveler->segmentList[0].col;
+	vector<Direction> possibleMoves;
+
+	//TRAVERER OF SIZE 1 handeling
+	if(grid[rowPos - 1][colPos] == SquareType::FREE_SQUARE && rowPos - 1 > 0 ){
+		possibleMoves.push_back(Direction::NORTH);
+	}
+	if (grid[rowPos + 1][colPos] == SquareType::FREE_SQUARE && rowPos + 1 < numRows){
+		possibleMoves.push_back(Direction::SOUTH);
+	}
+	if(grid[rowPos][colPos - 1] == SquareType::FREE_SQUARE && colPos - 1 > 0){
+		possibleMoves.push_back(Direction::WEST);
+	}
+	if(grid[rowPos][colPos + 1] == SquareType::FREE_SQUARE && colPos + 1 < numCols){
+		possibleMoves.push_back(Direction::EAST);
+	}
+	srand(time(0));
+
+	for(int i = currentTraveler->numberOfSegments; i > 0; i--){
+		currentTraveler->segmentList[i].col = currentTraveler->segmentList[i-1].col;
+		currentTraveler->segmentList[i].row = currentTraveler->segmentList[i-1].row;
+		currentTraveler->segmentList[i].dir = currentTraveler->segmentList[i-1].dir;
+	}
+
+	currentTraveler->segmentList[0].dir = possibleMoves[rand() % possibleMoves.size()];
+
+	if (currentTraveler->segmentList[0].dir == Direction::EAST){
+		currentTraveler->segmentList[0].col++;
+	}
+	else if (currentTraveler->segmentList[0].dir == Direction::WEST){
+		currentTraveler->segmentList[0].col--;
+	}
+	else if(currentTraveler->segmentList[0].dir == Direction::SOUTH){
+		currentTraveler->segmentList[0].row++;
+	}
+	else if(currentTraveler->segmentList[0].dir == Direction::NORTH){
+		currentTraveler->segmentList[0].row--;
+	}
+	printf("Traveler %d:    Row: %d      Col: %d\n", currentTraveler->index ,currentTraveler->segmentList[0].row, currentTraveler->segmentList[0].col);
+}
+
+
+void* travelerThreadFunc(void* args){
+	Traveler *currentTraveler = (Traveler *)args;
+
+	bool keepMoving = true;
+	unsigned int rowPos, colPos;
+
+	while(keepMoving != false){
+		rowPos = currentTraveler->segmentList[0].row;
+		colPos = currentTraveler->segmentList[0].col;
+
+		if(rowPos == exitPos.row && colPos == exitPos.col){
+			keepMoving = false;
+		}
+		else if(canMove(currentTraveler) == false){
+			keepMoving = false;
+		}
+		else{
+			move(currentTraveler);
+			usleep(travelerSleepTime);
+		}
+	}
+	return 0;
+}
+
 //------------------------------------------------------------------------
 //	You shouldn't have to touch this one.  Definitely if you don't
 //	add the "producer" threads, and probably not even if you do.
@@ -212,6 +305,101 @@ void slowdownTravelers(void)
 	//	We can slow everything down to admistrative pace if we want.
 	travelerSleepTime = (12 * travelerSleepTime) / 10;
 }
+
+
+
+
+void newMove(int travPos){
+	unsigned int rowPos = travelerList[travPos].segmentList[0].row;
+	unsigned int colPos = travelerList[travPos].segmentList[0].col;
+	vector<Direction> possibleMoves;
+
+	//TRAVERER OF SIZE 1 handeling
+	if(grid[rowPos - 1][colPos] == SquareType::FREE_SQUARE && rowPos - 1 > 0 ){
+		possibleMoves.push_back(Direction::NORTH);
+	}
+	if (grid[rowPos + 1][colPos] == SquareType::FREE_SQUARE && rowPos + 1 < numRows){
+		possibleMoves.push_back(Direction::SOUTH);
+	}
+	if(grid[rowPos][colPos - 1] == SquareType::FREE_SQUARE && colPos - 1 > 0){
+		possibleMoves.push_back(Direction::WEST);
+	}
+	if(grid[rowPos][colPos + 1] == SquareType::FREE_SQUARE && colPos + 1 < numCols){
+		possibleMoves.push_back(Direction::EAST);
+	}
+	srand(time(0));
+
+	for(int i = travelerList[travPos].numberOfSegments; i > 0; i--){
+		travelerList[travPos].segmentList[i].col = travelerList[travPos].segmentList[i-1].col;
+		travelerList[travPos].segmentList[i].row = travelerList[travPos].segmentList[i-1].row;
+		travelerList[travPos].segmentList[i].dir = travelerList[travPos].segmentList[i-1].dir;
+	}
+
+	travelerList[travPos].segmentList[0].dir = possibleMoves[rand() % possibleMoves.size()];
+
+	if (travelerList[travPos].segmentList[0].dir == Direction::EAST){
+		travelerList[travPos].segmentList[0].col++;
+	}
+	else if (travelerList[travPos].segmentList[0].dir == Direction::WEST){
+		travelerList[travPos].segmentList[0].col--;
+	}
+	else if(travelerList[travPos].segmentList[0].dir == Direction::SOUTH){
+		travelerList[travPos].segmentList[0].row++;
+	}
+	else if(travelerList[travPos].segmentList[0].dir == Direction::NORTH){
+		travelerList[travPos].segmentList[0].row--;
+	}
+}
+
+
+bool newCanMove(int travPos){
+	unsigned int rowPos = travelerList[travPos].segmentList[0].row;
+	unsigned int colPos = travelerList[travPos].segmentList[0].col;
+	
+	if(grid[rowPos - 1][colPos] == SquareType::FREE_SQUARE && rowPos - 1 > 0 ){
+		return true;
+	}
+	else if (grid[rowPos + 1][colPos] == SquareType::FREE_SQUARE && rowPos + 1 < numRows){
+		return true;
+	}
+	else if(grid[rowPos][colPos - 1] == SquareType::FREE_SQUARE && colPos - 1 > 0){
+		return true;
+	}
+	else if(grid[rowPos][colPos + 1] == SquareType::FREE_SQUARE && colPos + 1 < numCols){
+		return true;
+	}
+	return false;
+}
+
+
+
+
+
+
+void newThreadFunc(int travPos){
+	
+	bool keepMoving = true;
+	unsigned int rowPos, colPos;
+
+	while(keepMoving != false){
+		rowPos = travelerList[travPos].segmentList[0].row;
+		colPos = travelerList[travPos].segmentList[0].col;
+
+		if(rowPos == exitPos.row && colPos == exitPos.col){
+			keepMoving = false;
+		}
+		else if(newCanMove(travPos) == false){
+			keepMoving = false;
+		}
+		else{
+			newMove(travPos);
+			usleep(travelerSleepTime);
+		}
+		printf("Traveler %d:    Row: %d      Col: %d\n", travPos ,travelerList[travPos].segmentList[0].row, 
+		travelerList[travPos].segmentList[0].col);
+	}
+}
+
 
 
 
@@ -351,51 +539,75 @@ void initializeApplication(void)
 		
 		travelerList.push_back(traveler);
 	}
-	
+
+	//int passToThread = 0;
+
+	//thread firstThread(newThreadFunc, passToThread);
+
+
+	//firstThread.join();
+	/*
 	int p = fork();
 
 	if (p==0){
-
-		//SINGLE TRAVELER
+		
 		pthread_t thread_id;
+		
+		pthread_create(&thread_id, NULL, &travelerThreadFunc, &travelerList[0]);
 
-		struct TravelerToPass singleTraveler;
-		singleTraveler.travelersPassed = &travelerList;
-		singleTraveler.travelerIdx = 0;
-		singleTraveler.directionOfHead = (char *)"East";
+		bool notDone = true;
+		while (notDone == true){
+			usleep(travelerSleepTime);
+		}
+		
+	
+	}
+
+	
+	//SINGLE TRAVELER
+	pthread_t thread_id;
+
+	struct TravelerToPass singleTraveler;
+	singleTraveler.travelersPassed = &travelerList;
+	singleTraveler.travelerIdx = 0;
+	singleTraveler.directionOfHead = (char *)"East";
 	
 
-		pthread_create(&thread_id, NULL, &singleThreadFunc, &singleTraveler);
+	pthread_create(&thread_id, NULL, &singleThreadFunc, &singleTraveler);
 
+	pthread_join(thread_id, NULL);
 
-		//MULTIPLE TRAVELERS
-		TravelerToPass travelers[numTravelers];
-		pthread_t th[numTravelers];
+	//MULTIPLE TRAVELERS
+	TravelerToPass travelers[numTravelers];
+	pthread_t th[numTravelers];
 
-		for (unsigned int i = 0; i < numTravelers; i++){
-			struct TravelerToPass currentTraveler;
-			currentTraveler.travelersPassed = &travelerList;
-			currentTraveler.travelerIdx = i;
-			currentTraveler.directionOfHead = (char *)"East";
-			travelers[i] = currentTraveler;
-		}
-
-		for (unsigned int j = 0; j < numTravelers; j++){
-			pthread_create(&th[j], NULL, &threadFunc, &travelers[j]);
-		}
-
-		//Wait for threads to finish
-		for(unsigned int i = 0; i < numTravelers; i++){
-			pthread_join(th[i], NULL);
-			numTravelersDone ++;
-		}
+	for (unsigned int i = 0; i < numTravelers; i++){
+		struct TravelerToPass currentTraveler;
+		currentTraveler.travelersPassed = &travelerList;
+		currentTraveler.travelerIdx = i;
+		currentTraveler.directionOfHead = (char *)"East";
+		travelers[i] = currentTraveler;
 	}
-	else{
-		//	free array of colors
-		for (unsigned int k=0; k<numTravelers; k++)
-			delete []travelerColor[k];
-		delete []travelerColor;
+
+	for (unsigned int j = 0; j < numTravelers; j++){
+		pthread_create(&th[j], NULL, &threadFunc, &travelers[j]);
 	}
+
+	//Wait for threads to finish
+	for(unsigned int i = 0; i < numTravelers; i++){
+		pthread_join(th[i], NULL);
+		numTravelersDone ++;
+		
+	}
+	*/
+
+	
+	
+	//	free array of colors
+	for (unsigned int k=0; k<numTravelers; k++)
+		delete []travelerColor[k];
+	delete []travelerColor;
+	
 }
 
 
@@ -406,46 +618,41 @@ void* singleThreadFunc(void* args){
 	unsigned int currentRow, currentCol;
 	int count = 0;
 	
-	printf("Enter Thread Func\n");
+	//printf("Enter Thread Func\n");
 
 	while(goalReached != true){
 		currentRow = localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].row;
 		currentCol = localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].col;
 		
-		printf("%d \n", count);
+		//printf("%d \n", count);
 
 		if(currentRow == exitPos.row && currentCol == exitPos.col){
 			goalReached = true;
 		}
 		if(currentRow > exitPos.row){
-			localTraveler->travelersPassed = &travelerList;
-			localTraveler->travelerIdx = 0;
 			localTraveler->directionOfHead =(char *)"North";
 			moveTraveler(localTraveler);
-			
+			usleep(travelerSleepTime);
 		}
 		else if (currentRow < exitPos.row){
-			localTraveler->travelersPassed = &travelerList;
-			localTraveler->travelerIdx = 0;
 			localTraveler->directionOfHead =(char *)"South";
 			moveTraveler(localTraveler);
+			usleep(travelerSleepTime);
 		}
 		//Check east/west movement
 		if(currentCol > exitPos.col){
-			localTraveler->travelersPassed = &travelerList;
-			localTraveler->travelerIdx = 0;
 			localTraveler->directionOfHead =(char *)"West";
 			moveTraveler(localTraveler);
+			usleep(travelerSleepTime);
 		}
-		else if (currentCol < exitPos.row){
-			localTraveler->travelersPassed = &travelerList;
-			localTraveler->travelerIdx = 0;
+		else if (currentCol < exitPos.col){
 			localTraveler->directionOfHead =(char *)"East";
 			moveTraveler(localTraveler);
+			usleep(travelerSleepTime);
 		}
 		count ++;
 	}
-	printf("Single Thread Func Complete\n");
+	//printf("Single Thread Func Complete\n");
 	return 0;
 }
 
@@ -495,7 +702,7 @@ void* threadFunc(void* args){
 			colDir = Direction::WEST;
 			colMove = true;
 		}
-		else if (currentCol < exitPos.row){
+		else if (currentCol < exitPos.col){
 			colDir = Direction::EAST;
 			colMove = true;
 		}
@@ -540,6 +747,7 @@ void* threadFunc(void* args){
 			}
 		}
 	}
+	//printf("Multithread Complete\n");
 	return 0;
 }
 

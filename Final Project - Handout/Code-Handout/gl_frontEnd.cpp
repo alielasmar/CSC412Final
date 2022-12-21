@@ -256,6 +256,21 @@ void drawGrid(void)
 					//	nothing
 					break;
 			}
+			if (grid[i][j] == SquareType::TRAVELER)
+            {
+                //         red  green blue
+                glColor4f(0.f, 1.f, 0.f, 1.f);
+                
+                const float TRAV_DOT_SIZE = 0.2f;    //    fraction of square size
+
+                glBegin(GL_POLYGON);
+                    glVertex2f(j*DH, i*DV);
+                    glVertex2f((j+TRAV_DOT_SIZE)*DH, i*DV);
+                    glVertex2f((j+TRAV_DOT_SIZE)*DH, (i+TRAV_DOT_SIZE)*DV);
+                    glVertex2f(j*DH, (i+TRAV_DOT_SIZE)*DV);
+                glEnd();
+            
+            }
 		}
 	}
 	
