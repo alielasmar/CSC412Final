@@ -88,36 +88,44 @@ uniform_int_distribution<unsigned int> colGenerator;
 //	to make sure that access to critical section is properly synchronized
 //==================================================================================
 
-
-void moveTraveler(struct TravelerToPass *localTraveler){
-	for(int i = localTraveler->travelersPassed[0][localTraveler->travelerIdx].numberOfSegments; i > 0; i--){
-		localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[i].col = localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[i-1].col;
-		localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[i].row = localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[i-1].row;
-		localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[i].dir = localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[i-1].dir;
-	}
-	if(strncmp(localTraveler->directionOfHead,"East",2)== 0){
-		localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].dir = Direction::EAST;
-		localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].col++;
+void updatePos(struct Traveler * localTraveler){
+	for(int i = localTraveler->numberOfSegments; i > 0; i--){
+		localTraveler->segmentList[i].col=localTraveler->segmentList[i-1].col;
+		localTraveler->segmentList[i].row=localTraveler->segmentList[i-1].row;
+		localTraveler->segmentList[i].dir=localTraveler->segmentList[i-1].dir;
 
 	}
-	if(strncmp(localTraveler->directionOfHead,"West",2)== 0){
-		localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].dir = Direction::WEST;
-		localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].col--;
-	}
-	if(strncmp(localTraveler->directionOfHead,"South",2)== 0){
-		localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].dir = Direction::SOUTH ;
-		localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].row++;
-	}
-	if(strncmp(localTraveler->directionOfHead,"North",2)== 0){
-		localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].dir = Direction::NORTH ;
-		localTraveler->travelersPassed[0][localTraveler->travelerIdx].segmentList[0].row--;
-	}
-/*
-	std::cout<<" Traveler 0 Segment 0 at (row = " <<localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].row
-	<<", col =" <<localTraveler.travelersPassed[0][localTraveler.travelerIdx].segmentList[0].col<< ")"<<std::endl;
-*/
 }
 
+
+void moveTravelerN(struct Traveler * localTraveler){
+	updatePos(localTraveler);
+	localTraveler->segmentList[0].dir = Direction::NORTH;
+	localTraveler->segmentList[0].row--;
+}
+
+
+void moveTravelerS(struct Traveler * localTraveler){
+	updatePos(localTraveler);
+	localTraveler->segmentList[0].dir = Direction::SOUTH;
+	localTraveler->segmentList[0].row++;
+}
+
+
+void moveTravelerE(struct Traveler * localTraveler){
+	updatePos(localTraveler);
+	localTraveler->segmentList[0].dir = Direction::EAST;
+	localTraveler->segmentList[0].col++;
+
+
+}
+
+void moveTravelerW(struct Traveler * localTraveler){
+	updatePos(localTraveler);
+	localTraveler->segmentList[0].dir = Direction::WEST;
+	localTraveler->segmentList[0].col--;
+
+}
 
 void drawTravelers(void)
 {
@@ -155,8 +163,8 @@ void updateMessages(void)
 void handleKeyboardEvent(unsigned char c, int x, int y)
 {
 	int ok = 0;
-	struct TravelerToPass travelerToPass;
-	struct Traveler passedTraveler;
+
+
 	switch (c)
 	{
 		//	'esc' to quit
@@ -174,10 +182,13 @@ void handleKeyboardEvent(unsigned char c, int x, int y)
 		case '.':
 		//pthread
 /*		158-162 moves traveler			*/				
-			travelerToPass.travelersPassed =&travelerList;
-			travelerToPass.travelerIdx = 0;
-			travelerToPass.directionOfHead =(char *)"East";
-			moveTraveler(&travelerToPass);
+
+			//travelerToPass.travelersPassed =&travelerList;
+			//travelerToPass.travelerIdx = 0;
+			//travelerToPass.directionOfHead =(char *)"East";
+			//moveTraveler(travelerToPass);
+			moveTravelerN(&travelerList[0]);
+
 			speedupTravelers();
 			ok = 1;
 			//travelerList = travelerToPass.travelersPassed;
