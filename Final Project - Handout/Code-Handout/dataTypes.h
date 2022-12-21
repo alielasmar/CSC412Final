@@ -94,7 +94,7 @@ struct Traveler
 	
 	int numberOfSegments;
 };
-
+/*
 struct TravelerToPass{
 
 	std::vector<Traveler> * travelersPassed;
@@ -102,7 +102,7 @@ struct TravelerToPass{
 	char * directionOfHead;
 
 
-};
+};*/
 
 
 /**
