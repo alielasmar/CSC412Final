@@ -608,9 +608,9 @@ void initializeApplication(void)
 	*/
 	pthread_t thread_id;
 
-//	pthread_create(&thread_id, NULL, &singleThreadFunc, &travelerList[0]);
+	//pthread_create(&thread_id, NULL, &singleThreadFunc, &travelerList[0]);
 
-//	pthread_join(thread_id, NULL);
+	//pthread_join(thread_id, NULL);
 	
 	//	free array of colors
 	for (unsigned int k=0; k<numTravelers; k++)
