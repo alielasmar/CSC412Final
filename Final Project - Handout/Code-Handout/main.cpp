@@ -241,8 +241,8 @@ int main(int argc, char* argv[])
 	//	to be the width (number of columns) and height (number of rows) of the
 	//	grid, the number of travelers, etc.
 	//	So far, I hard code-some values
-	numRows = atoi(argv[1]);
-	numCols = atoi(argv[2]);
+	numCols = atoi(argv[1]);
+	numRows = atoi(argv[2]);
 	numTravelers = atoi(argv[3]);
 	movesBeforeGrowth = atoi(argv[4]);
 	numLiveThreads = 0;
@@ -372,7 +372,7 @@ void initializeApplication(void)
 	possibleDirections.push_back(Direction::WEST);
 
 	thread** travelerThreads = new thread*[numTravelers];
-	for(unsigned int i = 0; i < numTravelers; i++){
+	for(unsigned int i = 0; i < 1; i++){
 		travelerThreads[i] = new thread(singleThreadFunc, &travelerList[i]);
 		threadList.push_back(travelerThreads[i]);
 		numLiveThreads++;
@@ -397,10 +397,13 @@ void singleThreadFunc(struct Traveler *localTraveler){
 		currentRow = localTraveler->segmentList[0].row;
 		currentCol = localTraveler->segmentList[0].col;
 
+		if(currentRow == exitPos.row && currentCol == exitPos.col){
+			goalReached = true;
+			numLiveThreads --;
+			numTravelersDone ++;
+		}
+
 		if(goalReached == false){
-			if(currentRow == exitPos.row && currentCol == exitPos.col){
-				goalReached = true;
-			}
 
 			moveTraveler(localTraveler);
 		}
@@ -438,7 +441,10 @@ void moveTraveler(struct Traveler *localTraveler){
 	unsigned int southAdjustment = localTraveler->segmentList[0].row + 1;
 	unsigned int westAdjustment = localTraveler->segmentList[0].col - 1;
 	unsigned int eastAdjustment = localTraveler->segmentList[0].col + 1;
-	
+	bool northOpen = false;
+	bool southOpen = false;
+	bool westOpen = false;
+	bool eastOpen = false;
 
 	//Find direction that is behind it
 	if(localTraveler->segmentList[0].dir == Direction::NORTH){
@@ -454,25 +460,47 @@ void moveTraveler(struct Traveler *localTraveler){
 		behind = Direction::EAST;
 	}
 
+	if (northAdjustment > 0){
+		if(grid[northAdjustment][currentCol] == SquareType::FREE_SQUARE || grid[northAdjustment][currentCol] == SquareType::EXIT){
+			northOpen = true;
+		}
+	}
+
+	if (southAdjustment < numRows){
+		if(grid[southAdjustment][currentCol] == SquareType::FREE_SQUARE || grid[southAdjustment][currentCol] == SquareType::EXIT){
+			southOpen = true;
+		}
+	}
+
+	if (westAdjustment > 0){
+		if(grid[currentRow][westAdjustment] == SquareType::FREE_SQUARE || grid[currentRow][westAdjustment] == SquareType::EXIT){
+			westOpen = true;
+		}
+	}
+
+	if (eastAdjustment < numCols){
+		if(grid[currentRow][eastAdjustment] == SquareType::FREE_SQUARE || grid[currentRow][eastAdjustment] == SquareType::EXIT){
+			eastOpen = true;
+		}
+	}
 
 
-
-	if(Direction::NORTH != behind && northAdjustment > 0){
+	if(Direction::NORTH != behind && northOpen == true){
 		canMove.push_back(Direction::NORTH);
 		moves++;
 	}
 
-	if(Direction::SOUTH != behind && southAdjustment < numRows){
+	if(Direction::SOUTH != behind && southOpen == true){
 		canMove.push_back(Direction::SOUTH);
 		moves++;
 	}
 
-	if(Direction::WEST != behind && westAdjustment > 0){
+	if(Direction::WEST != behind && westOpen == true){
 		canMove.push_back(Direction::WEST);
 		moves++;
 	}
 
-	if(Direction::EAST != behind && eastAdjustment < numCols){
+	if(Direction::EAST != behind && eastOpen == true){
 		canMove.push_back(Direction::EAST);
 		moves++;
 	}
@@ -486,18 +514,22 @@ void moveTraveler(struct Traveler *localTraveler){
 
 void moveDirection(struct Traveler *localTraveler, Direction currentDir){
 	if(currentDir == Direction::NORTH){
+		//usleep(travelerSleepTime*10);
 		moveTravelerN(localTraveler);
 		usleep(travelerSleepTime);
 	}
 	else if(currentDir == Direction::SOUTH){
+		//usleep(travelerSleepTime*10);
 		moveTravelerS(localTraveler);
 		usleep(travelerSleepTime);
 	}
 	else if(currentDir == Direction::EAST){
+		//usleep(travelerSleepTime*10);
 		moveTravelerE(localTraveler);
 		usleep(travelerSleepTime);
 	}
 	else if(currentDir == Direction::WEST){
+		//usleep(travelerSleepTime*10);
 		moveTravelerW(localTraveler);
 		usleep(travelerSleepTime);
 	}
