@@ -18,14 +18,12 @@
 //
 #include "gl_frontEnd.h"
 //
-#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 //	feel free to "un-use" std if this is against your beliefs.
 using namespace std;
 pthread_t t1;
-pthread_mutex_t mutexLock;
 //==================================================================================
 //	Function prototypes
 //==================================================================================
@@ -37,7 +35,6 @@ void generateWalls(void);
 void generatePartitions(void);
 void singleThreadFunc(struct Traveler *localTraveler);
 Direction findMoveDirection(struct Traveler *localTraveler);
-bool checkNextSquare(struct Traveler *localTraveler, Direction currentDir);
 void moveTraveler(struct Traveler *localTraveler);
 void moveDirection(struct Traveler *localTraveler, Direction currentDir);
 
@@ -59,7 +56,6 @@ vector<Traveler> travelerList;
 vector<SlidingPartition> partitionList;
 GridPosition	exitPos;	//	location of the exit
 vector<thread*> threadList; //  list of pointers to threads
-vector<Direction> possibleDirections;   //  List of possible directions the traveler can move
 
 //	travelers' sleep time between moves (in microseconds)
 const int MIN_SLEEP_TIME = 1000;
@@ -86,54 +82,48 @@ uniform_int_distribution<unsigned int> colGenerator;
 
 
 //==================================================================================
-//	These are the functions that tie the simulation with the rendering.			  ||
-//	Some parts are "don't touch."  Other parts need your intervention			  ||
-//	to make sure that access to critical section is properly synchronized		  ||
+//	These are the functions that tie the simulation with the rendering.
+//	Some parts are "don't touch."  Other parts need your intervention
+//	to make sure that access to critical section is properly synchronized
 //==================================================================================
 
 void updatePos(struct Traveler * localTraveler){
-	//cout<<"POS Updated"<<endl;
-	for(int i = localTraveler->numberOfSegments; i > 0; i--){
+	for(int i = localTraveler->segmentList.size() - 1; i > 0; i--){
 		localTraveler->segmentList[i].col=localTraveler->segmentList[i-1].col;
 		localTraveler->segmentList[i].row=localTraveler->segmentList[i-1].row;
-		localTraveler->segmentList[i].dir=localTraveler->segmentList[i-1].dir;	
+		localTraveler->segmentList[i].dir=localTraveler->segmentList[i-1].dir;
+
 	}
-	pthread_mutex_unlock(&mutexLock);
 }
 
 
 void moveTravelerN(struct Traveler * localTraveler){
-	pthread_mutex_lock(&mutexLock);
- 	//updatePos(localTraveler);
+ 	updatePos(localTraveler);
 	localTraveler->segmentList[0].dir = Direction::NORTH;
 	localTraveler->segmentList[0].row--;
-	pthread_mutex_unlock(&mutexLock);
 }
 
 
 void moveTravelerS(struct Traveler * localTraveler){
-	pthread_mutex_lock(&mutexLock);
- 	//updatePos(localTraveler);
+ 	updatePos(localTraveler);
 	localTraveler->segmentList[0].dir = Direction::SOUTH;
 	localTraveler->segmentList[0].row++;
-	pthread_mutex_unlock(&mutexLock);
 }
 
 
 void moveTravelerE(struct Traveler * localTraveler){
-	pthread_mutex_lock(&mutexLock);
-	//updatePos(localTraveler);
+ 	updatePos(localTraveler);
 	localTraveler->segmentList[0].dir = Direction::EAST;
 	localTraveler->segmentList[0].col++;
-	pthread_mutex_unlock(&mutexLock);
+
+
 }
 
 void moveTravelerW(struct Traveler * localTraveler){
-	pthread_mutex_lock(&mutexLock);
- 	//updatePos(localTraveler);
+ 	updatePos(localTraveler);
 	localTraveler->segmentList[0].dir = Direction::WEST;
 	localTraveler->segmentList[0].col--;
-	pthread_mutex_unlock(&mutexLock);
+
 }
 
 void drawTravelers(void)
@@ -178,7 +168,12 @@ void handleKeyboardEvent(unsigned char c, int x, int y)
 	{
 		//	'esc' to quit
 		case 27:
-			for(unsigned int i = 0; i < 1; i++){
+//jyh
+//	Your traveler threads have no way to know that they should terminate, so
+//	the joining will not work.
+//	Second, you are looping on numTaavelers but you only pushed one thread, so
+//	you segfault on this.  Should be threadL:ist.size().
+			for(unsigned int i = 0; i < threadList.size(); i++){
 				threadList[i]->join();
 			}
 			exit(0);
@@ -192,8 +187,6 @@ void handleKeyboardEvent(unsigned char c, int x, int y)
 
 		//	speedup
 		case '.':
-/*		 moves traveler			*/		
-			//moveTravelerE(&travelerList[0]);
 			speedupTravelers();
 			ok = 1;
 			break;
@@ -242,7 +235,6 @@ void slowdownTravelers(void)
 //------------------------------------------------------------------------
 int main(int argc, char* argv[])
 {
-	pthread_mutex_init(&mutexLock,NULL);
 
 	//	We know that the arguments  of the program  are going
 	//	to be the width (number of columns) and height (number of rows) of the
@@ -280,7 +272,7 @@ int main(int argc, char* argv[])
 	for (int k=0; k<MAX_NUM_MESSAGES; k++)
 		free(message[k]);
 	free(message);
-	pthread_mutex_destroy(&mutexLock);
+	
 	//	This will probably never be executed (the exit point will be in one of the
 	//	call back functions).
 	return 0;
@@ -349,11 +341,9 @@ void initializeApplication(void)
 		unsigned int numAddSegments = segmentNumberGenerator(engine);
 		TravelerSegment currSeg = traveler.segmentList[0];
 		bool canAddSegment = true;
-		cout << "Traveler " << k << " at (row=" << pos.row << ", col=" <<
-		pos.col << "), direction: " << dirStr(dir) << ", with up to " << numAddSegments << " additional segments" << endl;
-		cout << "\t";
-
-		traveler.numberOfSegments = numAddSegments;
+		//cout << "Traveler " << k << " at (row=" << pos.row << ", col=" <<
+		//pos.col << "), direction: " << dirStr(dir) << ", with up to " << numAddSegments << " additional segments" << endl;
+		//cout << "\t";
 
 		for (unsigned int s=0; s<numAddSegments && canAddSegment; s++)
 		{
@@ -373,11 +363,6 @@ void initializeApplication(void)
 		travelerList.push_back(traveler);
 	}
 
-	possibleDirections.push_back(Direction::NORTH);
-	possibleDirections.push_back(Direction::SOUTH);
-	possibleDirections.push_back(Direction::EAST);
-	possibleDirections.push_back(Direction::WEST);
-
 	thread** travelerThreads = new thread*[numTravelers];
 	for(unsigned int i = 0; i < numTravelers; i++){
 		travelerThreads[i] = new thread(singleThreadFunc, &travelerList[i]);
@@ -396,11 +381,27 @@ void initializeApplication(void)
 
 
 void singleThreadFunc(struct Traveler *localTraveler){
-	usleep(1000000);
 
 	bool goalReached = false;
 	unsigned int currentRow, currentCol;
-	
+
+//jyh
+//	You shoulds also use a global bool that the main thread can set whe it wants the
+//	traveler theeads to end (so it can join them).
+//	so...
+//		// global variable
+//		bool appIsRunnning = true;
+//
+//		...
+//
+//		set false in handleKeyboardEvent, before trying to join
+//		appIsRunnning = false;
+//
+//		...
+//
+//	and here
+//	while(!goalReached && appIsRunning){
+
 	while(goalReached != true){
 		currentRow = localTraveler->segmentList[0].row;
 		currentCol = localTraveler->segmentList[0].col;
@@ -409,32 +410,16 @@ void singleThreadFunc(struct Traveler *localTraveler){
 			goalReached = true;
 			numLiveThreads --;
 			numTravelersDone ++;
-			//std::terminate();
+			
+			//jyh
+			//	You will also want to clear the grid squares that are still marked
+			//	as occupied by your traveler.
 		}
 
 		if(goalReached == false){
-//cout<<"MOVE TRAvELER"<<endl;
-			//moveTraveler(localTraveler);
+
+			moveTraveler(localTraveler);
 		}
-		
-		if(currentRow > exitPos.row){
-			moveTravelerN(localTraveler);
-			usleep(travelerSleepTime);
-		}
-		else if (currentRow < exitPos.row){
-			moveTravelerS(localTraveler);
-			usleep(travelerSleepTime);
-		}
-		//Check east/west movement
-		else if(currentCol > exitPos.col){
-			moveTravelerW(localTraveler);
-			usleep(travelerSleepTime);
-		}
-		else if (currentCol < exitPos.col){
-			moveTravelerE(localTraveler);
-			usleep(travelerSleepTime);
-		}
-		
 	}
 }
 
@@ -454,6 +439,7 @@ void moveTraveler(struct Traveler *localTraveler){
 	bool southOpen = false;
 	bool westOpen = false;
 	bool eastOpen = false;
+
 	//Find direction that is behind it
 	if(localTraveler->segmentList[0].dir == Direction::NORTH){
 		behind = Direction::SOUTH;
@@ -469,25 +455,27 @@ void moveTraveler(struct Traveler *localTraveler){
 	}
 
 	if (northAdjustment > 0){
-		if(grid[currentRow--][currentCol] == SquareType::FREE_SQUARE || grid[currentRow--][currentCol] == SquareType::EXIT){
+//jyh
+//	should be free square or the EXIT
+		if(grid[northAdjustment][currentCol] == SquareType::FREE_SQUARE || grid[northAdjustment][currentCol] == SquareType::EXIT){
 			northOpen = true;
 		}
 	}
 
 	if (southAdjustment < numRows){
-		if(grid[currentRow++][currentCol] == SquareType::FREE_SQUARE || grid[currentRow++][currentCol] == SquareType::EXIT){
+		if(grid[southAdjustment][currentCol] == SquareType::FREE_SQUARE || grid[southAdjustment][currentCol] == SquareType::EXIT){
 			southOpen = true;
 		}
 	}
 
 	if (westAdjustment > 0){
-		if(grid[currentRow][currentCol--] == SquareType::FREE_SQUARE || grid[currentRow][currentCol--] == SquareType::EXIT){
+		if(grid[currentRow][westAdjustment] == SquareType::FREE_SQUARE || grid[currentRow][westAdjustment] == SquareType::EXIT){
 			westOpen = true;
 		}
 	}
 
 	if (eastAdjustment < numCols){
-		if(grid[currentRow][currentCol++] == SquareType::FREE_SQUARE || grid[currentRow][currentCol++] == SquareType::EXIT){
+		if(grid[currentRow][eastAdjustment] == SquareType::FREE_SQUARE || grid[currentRow][eastAdjustment] == SquareType::EXIT){
 			eastOpen = true;
 		}
 	}
@@ -512,80 +500,14 @@ void moveTraveler(struct Traveler *localTraveler){
 		canMove.push_back(Direction::EAST);
 		moves++;
 	}
-	//cout<<"CALLS MOVEDIRECTION()"<<endl;
+
 	if(moves > 0){
-		cout<<rand() % moves<<endl;
-		//moveDirection(localTraveler, canMove[rand() % moves]);
-		//moveDirection(localTraveler,Direction::EAST);
-		canMove.clear();
+		moveDirection(localTraveler, canMove[rand() % moves]);
 	}
 
 }
 
 
-void moveDirection(struct Traveler *localTraveler, Direction currentDir){
-	if(currentDir == Direction::NORTH){
-		//usleep(travelerSleepTime*10);
-
-		moveTravelerN(localTraveler);
-		usleep(travelerSleepTime);
-	}
-	else if(currentDir == Direction::SOUTH){
-		//usleep(travelerSleepTime*10);
-		moveTravelerS(localTraveler);
-		usleep(travelerSleepTime);
-	}
-	else if(currentDir == Direction::EAST){
-		//usleep(travelerSleepTime*10);
-		moveTravelerE(localTraveler);
-		usleep(travelerSleepTime);
-	}
-	else if(currentDir == Direction::WEST){
-		//usleep(travelerSleepTime*10);
-		moveTravelerW(localTraveler);
-		usleep(travelerSleepTime);
-	}
-}
-
-
-
-
-
-/*
-Direction findMoveDirection(struct Traveler *localTraveler){
-	vector<Direction> canMove;
-	Direction behind;
-	int possibleDir = 0;
-	//Find direction that is behind it
-	if(localTraveler->segmentList[0].dir == Direction::NORTH){
-		behind = Direction::SOUTH;
-	}
-	else if(localTraveler->segmentList[0].dir == Direction::SOUTH){
-		behind = Direction::NORTH;
-	}
-	else if(localTraveler->segmentList[0].dir == Direction::EAST){
-		behind = Direction::WEST;
-	}
-	else{
-		behind = Direction::EAST;
-	}
-	
-	//Find directions it can travel
-	for(unsigned int i = 0; i < possibleDirections.size(); i++){
-		if(possibleDirections[i] != behind && checkNextSquare(localTraveler, possibleDirections[i]) == true){
-			canMove.push_back(possibleDirections[i]);
-			possibleDir ++;
-		}
-	}
-	//Pick a direction and and travel or say it can't move
-	if(possibleDir != 0){
-		return canMove[0];
-	}
-	else{
-		return;
-	}
-}
-*/
 
 bool checkNextSquare(struct Traveler *localTraveler, Direction currentDir){
 

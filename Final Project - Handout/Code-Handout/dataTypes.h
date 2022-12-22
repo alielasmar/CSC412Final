@@ -91,8 +91,6 @@ struct Traveler
 	/**	The list of segments that form the 'tail' of the traveler
 	 */
 	std::vector<TravelerSegment> segmentList;
-	
-	int numberOfSegments;
 };
 
 
