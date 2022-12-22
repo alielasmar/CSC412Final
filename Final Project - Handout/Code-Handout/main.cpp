@@ -101,21 +101,21 @@ void updatePos(struct Traveler * localTraveler){
 
 
 void moveTravelerN(struct Traveler * localTraveler){
- 	updatePos(localTraveler);
+ 	//updatePos(localTraveler);
 	localTraveler->segmentList[0].dir = Direction::NORTH;
 	localTraveler->segmentList[0].row--;
 }
 
 
 void moveTravelerS(struct Traveler * localTraveler){
- 	updatePos(localTraveler);
+ 	//updatePos(localTraveler);
 	localTraveler->segmentList[0].dir = Direction::SOUTH;
 	localTraveler->segmentList[0].row++;
 }
 
 
 void moveTravelerE(struct Traveler * localTraveler){
- 	updatePos(localTraveler);
+ 	//updatePos(localTraveler);
 	localTraveler->segmentList[0].dir = Direction::EAST;
 	localTraveler->segmentList[0].col++;
 
@@ -123,7 +123,7 @@ void moveTravelerE(struct Traveler * localTraveler){
 }
 
 void moveTravelerW(struct Traveler * localTraveler){
- 	updatePos(localTraveler);
+ 	//updatePos(localTraveler);
 	localTraveler->segmentList[0].dir = Direction::WEST;
 	localTraveler->segmentList[0].col--;
 
@@ -372,7 +372,7 @@ void initializeApplication(void)
 	possibleDirections.push_back(Direction::WEST);
 
 	thread** travelerThreads = new thread*[numTravelers];
-	for(unsigned int i = 0; i < 1; i++){
+	for(unsigned int i = 0; i < numTravelers; i++){
 		travelerThreads[i] = new thread(singleThreadFunc, &travelerList[i]);
 		threadList.push_back(travelerThreads[i]);
 		numLiveThreads++;
@@ -460,12 +460,13 @@ void moveTraveler(struct Traveler *localTraveler){
 		behind = Direction::EAST;
 	}
 
+	
 	if (northAdjustment > 0){
 		if(grid[northAdjustment][currentCol] == SquareType::FREE_SQUARE || grid[northAdjustment][currentCol] == SquareType::EXIT){
 			northOpen = true;
 		}
 	}
-
+	
 	if (southAdjustment < numRows){
 		if(grid[southAdjustment][currentCol] == SquareType::FREE_SQUARE || grid[southAdjustment][currentCol] == SquareType::EXIT){
 			southOpen = true;
@@ -483,7 +484,7 @@ void moveTraveler(struct Traveler *localTraveler){
 			eastOpen = true;
 		}
 	}
-
+	
 
 	if(Direction::NORTH != behind && northOpen == true){
 		canMove.push_back(Direction::NORTH);
