@@ -89,6 +89,73 @@ uniform_int_distribution<unsigned int> colGenerator;
 //	to make sure that access to critical section is properly synchronized
 //==================================================================================
 
+void erasePartition(SlidingPartition * localPartition){
+	for(int i = localPartition->blockList.size()-1; i >= 0; i--){
+		grid[localPartition->blockList[i].row][localPartition->blockList[i].col] = SquareType::FREE_SQUARE;
+	}
+}
+
+void movePartition(SlidingPartition * localPartition, Direction directionMoving){
+
+	if(directionMoving == Direction::NORTH){
+		for(int i = localPartition->blockList.size()-1; i > 0; i--){
+			localPartition->blockList[i].row--;
+			grid[localPartition->blockList[i].row][localPartition->blockList[i].col] = SquareType::VERTICAL_PARTITION;
+		}
+	}
+
+
+	if(directionMoving == Direction::SOUTH){
+		for(int i = localPartition->blockList.size()-1; i > 0; i--){
+			localPartition->blockList[i].row++;
+			grid[localPartition->blockList[i].row][localPartition->blockList[i].col] = SquareType::VERTICAL_PARTITION;
+		}
+	}
+
+
+	if(directionMoving == Direction::EAST){
+
+		for(int i = localPartition->blockList.size()-1; i > 0; i--){
+			localPartition->blockList[i].col++;
+			grid[localPartition->blockList[i].row][localPartition->blockList[i].col] = SquareType::HORIZONTAL_PARTITION;
+		}
+	}
+
+
+	if(directionMoving == Direction::WEST){
+		for(int i = localPartition->blockList.size()-1; i > 0; i--){
+			localPartition->blockList[i].col++;
+			grid[localPartition->blockList[i].row][localPartition->blockList[i].col] = SquareType::HORIZONTAL_PARTITION;
+		}
+
+		
+	}
+}
+
+void slidePartition(SlidingPartition * localPartition){
+	//cout<<"SLIDE"<<endl;
+	
+	vector<Direction> possibleDir;
+		//cout<<localPartition->blockList[0].col--<<endl;
+	if(localPartition->isVertical){
+		cout<<"VERTICAL"<<endl;
+
+		possibleDir.push_back(Direction::NORTH);
+		possibleDir.push_back(Direction::SOUTH);
+	}
+	
+	else{
+		possibleDir.push_back(Direction::EAST);
+		possibleDir.push_back(Direction::WEST);
+	}
+
+	int pickDir = rand()%2;
+
+		erasePartition(localPartition);
+	movePartition(localPartition,possibleDir[pickDir]);
+
+}
+
 
 void eraseTraveler(struct Traveler * localTraveler){
 //Free up squares
@@ -255,6 +322,10 @@ void handleKeyboardEvent(unsigned char c, int x, int y)
 
 		//	speedup
 		case '.':
+		for(int i = 0; i < partitionList.size()-1; i++){
+		slidePartition(&partitionList[i]);
+
+		}
 			speedupTravelers();
 			ok = 1;
 			break;
@@ -940,7 +1011,9 @@ void generatePartitions(void)
 						GridPosition pos = {row, col};
 						part.blockList.push_back(pos);
 					}
+				partitionList.push_back(part);	
 				}
+				
 			}
 		}
 		// case of a horizontal partition
@@ -979,8 +1052,10 @@ void generatePartitions(void)
 						GridPosition pos = {row, col};
 						part.blockList.push_back(pos);
 					}
+					partitionList.push_back(part);
 				}
 			}
+			
 		}
 	}
 }
