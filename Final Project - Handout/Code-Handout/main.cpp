@@ -203,12 +203,13 @@ void updatePos(struct Traveler * localTraveler){
 
 
 	mutexLock.lock();
+	localTraveler->travelerLock->lock();
 	for(int i = localTraveler->segmentList.size()-1; i > 0; i--){
 		localTraveler->segmentList[i].col=localTraveler->segmentList[i-1].col;
 		localTraveler->segmentList[i].row=localTraveler->segmentList[i-1].row;
 		localTraveler->segmentList[i].dir=localTraveler->segmentList[i-1].dir;
-
 	}
+	localTraveler->travelerLock->unlock();
 	mutexLock.unlock();
 
 }
@@ -233,7 +234,9 @@ void growTraveler(struct Traveler * localTraveler){
 		mutexLock.lock();
 		int lastElement = localTraveler->segmentList.size()-1;
 		TravelerSegment seg = {localTraveler->segmentList[lastElement].row, localTraveler->segmentList[lastElement].col, localTraveler->segmentList[lastElement].dir}; 
+		localTraveler->travelerLock->lock();
 		localTraveler->segmentList.push_back(seg);
+		localTraveler->travelerLock->unlock();
 		mutexLock.unlock();
 
 		updateTravelerBlocks(localTraveler);
@@ -245,9 +248,11 @@ void moveTravelerN(struct Traveler * localTraveler){
  	updatePos(localTraveler);
 
 	mutexLock.lock();
-			localTraveler->movesTraveled++;
+	localTraveler->travelerLock->lock();
+	localTraveler->movesTraveled++;
 	localTraveler->segmentList[0].dir = Direction::NORTH;
 	localTraveler->segmentList[0].row--;
+	localTraveler->travelerLock->unlock();
 	mutexLock.unlock();
 	updateTravelerBlocks(localTraveler);
 }
@@ -257,9 +262,11 @@ void moveTravelerS(struct Traveler * localTraveler){
  	updatePos(localTraveler);
 
 	mutexLock.lock();
-			localTraveler->movesTraveled++;
+	localTraveler->travelerLock->lock();
+	localTraveler->movesTraveled++;
 	localTraveler->segmentList[0].dir = Direction::SOUTH;
 	localTraveler->segmentList[0].row++;
+	localTraveler->travelerLock->unlock();
 	mutexLock.unlock();
 	updateTravelerBlocks(localTraveler);
 }
@@ -269,9 +276,11 @@ void moveTravelerE(struct Traveler * localTraveler){
 
 	updatePos(localTraveler);
 	mutexLock.lock();
-			localTraveler->movesTraveled++;
+	localTraveler->travelerLock->lock();
+	localTraveler->movesTraveled++;
 	localTraveler->segmentList[0].dir = Direction::EAST;
 	localTraveler->segmentList[0].col++;
+	localTraveler->travelerLock->unlock();
 	mutexLock.unlock();
 	updateTravelerBlocks(localTraveler);
 
@@ -281,9 +290,11 @@ void moveTravelerW(struct Traveler * localTraveler){
  	updatePos(localTraveler);
 
 	mutexLock.lock();
-			localTraveler->movesTraveled++;
+	localTraveler->travelerLock->lock();
+	localTraveler->movesTraveled++;
 	localTraveler->segmentList[0].dir = Direction::WEST;
 	localTraveler->segmentList[0].col--;
+	localTraveler->travelerLock->unlock();
 	mutexLock.unlock();
 	updateTravelerBlocks(localTraveler);
 
@@ -724,45 +735,6 @@ void moveDirection(struct Traveler *localTraveler, Direction currentDir){
 	}
 	
 }
-
-
-
-
-/*
-Direction findMoveDirection(struct Traveler *localTraveler){
-	vector<Direction> canMove;
-	Direction behind;
-	int possibleDir = 0;
-	//Find direction that is behind it
-	if(localTraveler->segmentList[0].dir == Direction::NORTH){
-		behind = Direction::SOUTH;
-	}
-	else if(localTraveler->segmentList[0].dir == Direction::SOUTH){
-		behind = Direction::NORTH;
-	}
-	else if(localTraveler->segmentList[0].dir == Direction::EAST){
-		behind = Direction::WEST;
-	}
-	else{
-		behind = Direction::EAST;
-	}
-	
-	//Find directions it can travel
-	for(unsigned int i = 0; i < possibleDirections.size(); i++){
-		if(possibleDirections[i] != behind && checkNextSquare(localTraveler, possibleDirections[i]) == true){
-			canMove.push_back(possibleDirections[i]);
-			possibleDir ++;
-		}
-	}
-	//Pick a direction and and travel or say it can't move
-	if(possibleDir != 0){
-		return canMove[0];
-	}
-	else{
-		return;
-	}
-}
-*/
 
 
 bool checkNextSquare(struct Traveler *localTraveler, Direction currentDir){
