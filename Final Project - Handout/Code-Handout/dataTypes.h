@@ -11,6 +11,8 @@
 #include <vector>
 #include <string>
 #include <mutex>
+
+
 /**	Travel Direction data type.
  *	Note that if you define a variable
  *	Direction dir = whatever;
@@ -92,7 +94,13 @@ struct Traveler
 	 */
 	std::vector<TravelerSegment> segmentList;
 
+
+	//  The amount of moves the traveler has completed
 	int movesTraveled;
+
+
+	//  The lock for the traveler
+	std::mutex *travelerLock; 
 };
 
 
