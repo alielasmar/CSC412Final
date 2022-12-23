@@ -68,6 +68,7 @@ const int MAX_NUM_MESSAGES = 8;
 const int MAX_LENGTH_MESSAGE = 32;
 char** message;
 time_t launchTime;
+bool appRunning = true;
 
 //	Random generators:  For uniform distributions
 const unsigned int MAX_NUM_INITIAL_SEGMENTS = 6;
@@ -173,6 +174,7 @@ void handleKeyboardEvent(unsigned char c, int x, int y)
 //	the joining will not work.
 //	Second, you are looping on numTaavelers but you only pushed one thread, so
 //	you segfault on this.  Should be threadL:ist.size().
+			appRunning = false;
 			for(unsigned int i = 0; i < threadList.size(); i++){
 				threadList[i]->join();
 			}
@@ -402,7 +404,7 @@ void singleThreadFunc(struct Traveler *localTraveler){
 //	and here
 //	while(!goalReached && appIsRunning){
 
-	while(goalReached != true){
+	while(goalReached != true && appRunning == true){
 		currentRow = localTraveler->segmentList[0].row;
 		currentCol = localTraveler->segmentList[0].col;
 
@@ -455,8 +457,6 @@ void moveTraveler(struct Traveler *localTraveler){
 	}
 
 	if (northAdjustment > 0){
-//jyh
-//	should be free square or the EXIT
 		if(grid[northAdjustment][currentCol] == SquareType::FREE_SQUARE || grid[northAdjustment][currentCol] == SquareType::EXIT){
 			northOpen = true;
 		}
