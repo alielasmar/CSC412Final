@@ -89,6 +89,7 @@ uniform_int_distribution<unsigned int> colGenerator;
 //	to make sure that access to critical section is properly synchronized
 //==================================================================================
 
+
 void eraseTraveler(struct Traveler * localTraveler){
 //Free up squares
 	mutexLock.lock();
@@ -136,6 +137,17 @@ void updateTravelerBlocks(struct Traveler * localTraveler){
 		mutexLock.unlock();
 
 }
+
+void growTraveler(struct Traveler * localTraveler){
+		mutexLock.lock();
+		int lastElement = localTraveler->segmentList.size()-1;
+		TravelerSegment seg = {localTraveler->segmentList[lastElement].row, localTraveler->segmentList[lastElement].col, localTraveler->segmentList[lastElement].dir}; 
+		localTraveler->segmentList.push_back(seg);
+		mutexLock.unlock();
+		
+		updateTravelerBlocks(localTraveler);
+}
+
 
 
 void moveTravelerN(struct Traveler * localTraveler){
@@ -464,6 +476,7 @@ void singleThreadFunc(struct Traveler *localTraveler){
 		if(goalReached == false){
 
 			if(localTraveler->movesTraveled % movesBeforeGrowth == 0){
+				growTraveler(localTraveler);
 			/* 
 			Grow traveler
 			*/
