@@ -90,6 +90,23 @@ uniform_int_distribution<unsigned int> colGenerator;
 //	to make sure that access to critical section is properly synchronized
 //==================================================================================
 
+void eraseTraveler(struct Traveler * localTraveler){
+//Free up squares
+	mutexLock.lock();
+	for(int i = localTraveler->segmentList.size()-1; i >= 0; i--){
+		grid[localTraveler->segmentList[i].row][localTraveler->segmentList[i].col] = SquareType::FREE_SQUARE;
+	}
+	mutexLock.unlock();
+// deallocate Traveler passed
+
+		
+		localTraveler->segmentList.erase(localTraveler->segmentList.begin(),localTraveler->segmentList.begin()+ localTraveler->segmentList.size());
+	//	localTraveler->segmentList[i].row;
+	//	localTraveler->segmentList[i].dir;
+	
+}
+
+
 void updatePos(struct Traveler * localTraveler){
 	mutexLock.lock();
 	for(int i = localTraveler->segmentList.size()-1; i >= 0; i--){
@@ -433,6 +450,7 @@ void singleThreadFunc(struct Traveler *localTraveler){
 			goalReached = true;
 			numLiveThreads --;
 			numTravelersDone ++;
+			eraseTraveler(localTraveler);
 			
 			//jyh
 			//	You will also want to clear the grid squares that are still marked
