@@ -90,6 +90,12 @@ uniform_int_distribution<unsigned int> colGenerator;
 //==================================================================================
 
 void updatePos(struct Traveler * localTraveler){
+	mutexLock.lock();
+	for(int i = localTraveler->segmentList.size()-1; i >= 0; i--){
+		grid[localTraveler->segmentList[i].row][localTraveler->segmentList[i].col] = SquareType::FREE_SQUARE;
+	}
+	mutexLock.unlock();
+
 
 	mutexLock.lock();
 	for(int i = localTraveler->segmentList.size()-1; i > 0; i--){
@@ -102,6 +108,18 @@ void updatePos(struct Traveler * localTraveler){
 
 }
 
+void updateTravelerBlocks(struct Traveler * localTraveler){
+		mutexLock.lock();
+	for(int i = localTraveler->segmentList.size()-1; i >= 0; i--){
+		if(grid[localTraveler->segmentList[i].row][localTraveler->segmentList[i].col] != SquareType::EXIT)
+		{
+		grid[localTraveler->segmentList[i].row][localTraveler->segmentList[i].col] = SquareType::TRAVELER;
+		} 
+	}
+		mutexLock.unlock();
+
+}
+
 
 void moveTravelerN(struct Traveler * localTraveler){
  	updatePos(localTraveler);
@@ -110,7 +128,7 @@ void moveTravelerN(struct Traveler * localTraveler){
 	localTraveler->segmentList[0].dir = Direction::NORTH;
 	localTraveler->segmentList[0].row--;
 	mutexLock.unlock();
-
+	updateTravelerBlocks(localTraveler);
 }
 
 
@@ -121,7 +139,7 @@ void moveTravelerS(struct Traveler * localTraveler){
 	localTraveler->segmentList[0].dir = Direction::SOUTH;
 	localTraveler->segmentList[0].row++;
 	mutexLock.unlock();
-
+	updateTravelerBlocks(localTraveler);
 }
 
 
@@ -132,6 +150,7 @@ void moveTravelerE(struct Traveler * localTraveler){
 	localTraveler->segmentList[0].dir = Direction::EAST;
 	localTraveler->segmentList[0].col++;
 	mutexLock.unlock();
+	updateTravelerBlocks(localTraveler);
 
 }
 
@@ -142,6 +161,7 @@ void moveTravelerW(struct Traveler * localTraveler){
 	localTraveler->segmentList[0].dir = Direction::WEST;
 	localTraveler->segmentList[0].col--;
 	mutexLock.unlock();
+	updateTravelerBlocks(localTraveler);
 
 }
 
