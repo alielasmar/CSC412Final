@@ -144,7 +144,7 @@ void growTraveler(struct Traveler * localTraveler){
 		TravelerSegment seg = {localTraveler->segmentList[lastElement].row, localTraveler->segmentList[lastElement].col, localTraveler->segmentList[lastElement].dir}; 
 		localTraveler->segmentList.push_back(seg);
 		mutexLock.unlock();
-		
+
 		updateTravelerBlocks(localTraveler);
 }
 
@@ -475,14 +475,6 @@ void singleThreadFunc(struct Traveler *localTraveler){
 		//mutexLock.unlock();
 		if(goalReached == false){
 
-			if(localTraveler->movesTraveled % movesBeforeGrowth == 0){
-				growTraveler(localTraveler);
-			/* 
-			Grow traveler
-			*/
-
-			}
-
 			moveTraveler(localTraveler);
 		}
 
@@ -579,6 +571,13 @@ mutexLock.unlock();
 
 
 	if(moves > 0){
+			if(localTraveler->movesTraveled % movesBeforeGrowth == 0){
+				growTraveler(localTraveler);
+			/* 
+			Grow traveler
+			*/
+
+			}
 		moveDirection(localTraveler, canMove[rand() % moves]);
 	}
 }
