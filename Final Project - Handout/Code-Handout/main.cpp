@@ -24,7 +24,7 @@
 //	feel free to "un-use" std if this is against your beliefs.
 using namespace std;
 
-std::mutex mutexLock;
+mutex mutexLock;
 
 //==================================================================================
 //	Function prototypes
@@ -48,7 +48,7 @@ void moveDirection(struct Traveler *localTraveler, Direction currentDir);
 //-------------------------------------
 //	The state grid and its dimensions (arguments to the program)
 SquareType** grid;
-mutex** gridLocks;
+mutex*** gridLocks;
 unsigned int numRows = 0;	//	height of the grid
 unsigned int numCols = 0;	//	width
 unsigned int numTravelers = 0;	//	initial number
@@ -92,7 +92,10 @@ uniform_int_distribution<unsigned int> colGenerator;
 
 void erasePartition(SlidingPartition * localPartition){
 	for(int i = localPartition->blockList.size()-1; i >= 0; i--){
+
+		gridLocks[localPartition->blockList[i].row][localPartition->blockList[i].col]->lock();
 		grid[localPartition->blockList[i].row][localPartition->blockList[i].col] = SquareType::FREE_SQUARE;
+		gridLocks[localPartition->blockList[i].row][localPartition->blockList[i].col]->unlock();
 	}
 }
 
@@ -101,7 +104,10 @@ void movePartition(SlidingPartition * localPartition, Direction directionMoving)
 	if(directionMoving == Direction::NORTH){
 		for(int i = localPartition->blockList.size()-1; i > 0; i--){
 			localPartition->blockList[i].row--;
+
+			gridLocks[localPartition->blockList[i].row][localPartition->blockList[i].col]->lock();
 			grid[localPartition->blockList[i].row][localPartition->blockList[i].col] = SquareType::VERTICAL_PARTITION;
+			gridLocks[localPartition->blockList[i].row][localPartition->blockList[i].col]->unlock();
 		}
 	}
 
@@ -109,7 +115,10 @@ void movePartition(SlidingPartition * localPartition, Direction directionMoving)
 	if(directionMoving == Direction::SOUTH){
 		for(int i = localPartition->blockList.size()-1; i > 0; i--){
 			localPartition->blockList[i].row++;
+
+			gridLocks[localPartition->blockList[i].row][localPartition->blockList[i].col]->lock();
 			grid[localPartition->blockList[i].row][localPartition->blockList[i].col] = SquareType::VERTICAL_PARTITION;
+			gridLocks[localPartition->blockList[i].row][localPartition->blockList[i].col]->unlock();
 		}
 	}
 
@@ -118,7 +127,10 @@ void movePartition(SlidingPartition * localPartition, Direction directionMoving)
 
 		for(int i = localPartition->blockList.size()-1; i > 0; i--){
 			localPartition->blockList[i].col++;
+
+			gridLocks[localPartition->blockList[i].row][localPartition->blockList[i].col]->lock();
 			grid[localPartition->blockList[i].row][localPartition->blockList[i].col] = SquareType::HORIZONTAL_PARTITION;
+			gridLocks[localPartition->blockList[i].row][localPartition->blockList[i].col]->unlock();
 		}
 	}
 
@@ -126,10 +138,11 @@ void movePartition(SlidingPartition * localPartition, Direction directionMoving)
 	if(directionMoving == Direction::WEST){
 		for(int i = localPartition->blockList.size()-1; i > 0; i--){
 			localPartition->blockList[i].col++;
-			grid[localPartition->blockList[i].row][localPartition->blockList[i].col] = SquareType::HORIZONTAL_PARTITION;
-		}
 
-		
+			gridLocks[localPartition->blockList[i].row][localPartition->blockList[i].col]->lock();
+			grid[localPartition->blockList[i].row][localPartition->blockList[i].col] = SquareType::HORIZONTAL_PARTITION;
+			gridLocks[localPartition->blockList[i].row][localPartition->blockList[i].col]->unlock();
+		}		
 	}
 }
 
@@ -162,9 +175,13 @@ void eraseTraveler(struct Traveler * localTraveler){
 //Free up squares
 	mutexLock.lock();
 	for(int i = localTraveler->segmentList.size()-1; i >= 0; i--){
+		gridLocks[localTraveler->segmentList[i].row][localTraveler->segmentList[i].col]->lock();
+
 		if(grid[localTraveler->segmentList[i].row][localTraveler->segmentList[i].col] != SquareType::EXIT){
 			grid[localTraveler->segmentList[i].row][localTraveler->segmentList[i].col] = SquareType::FREE_SQUARE;
 		}
+
+		gridLocks[localTraveler->segmentList[i].row][localTraveler->segmentList[i].col]->unlock();
 	}
 
 // deallocate Traveler passed
@@ -178,7 +195,9 @@ void eraseTraveler(struct Traveler * localTraveler){
 void updatePos(struct Traveler * localTraveler){
 	mutexLock.lock();
 	for(int i = localTraveler->segmentList.size()-1; i >= 0; i--){
+		gridLocks[localTraveler->segmentList[i].row][localTraveler->segmentList[i].col]->lock();
 		grid[localTraveler->segmentList[i].row][localTraveler->segmentList[i].col] = SquareType::FREE_SQUARE;
+		gridLocks[localTraveler->segmentList[i].row][localTraveler->segmentList[i].col]->unlock();
 	}
 	mutexLock.unlock();
 
@@ -197,10 +216,14 @@ void updatePos(struct Traveler * localTraveler){
 void updateTravelerBlocks(struct Traveler * localTraveler){
 		mutexLock.lock();
 	for(int i = localTraveler->segmentList.size()-1; i >= 0; i--){
+		gridLocks[localTraveler->segmentList[i].row][localTraveler->segmentList[i].col]->lock();
+		
 		if(grid[localTraveler->segmentList[i].row][localTraveler->segmentList[i].col] != SquareType::EXIT)
 		{
-		grid[localTraveler->segmentList[i].row][localTraveler->segmentList[i].col] = SquareType::TRAVELER;
-		} 
+			grid[localTraveler->segmentList[i].row][localTraveler->segmentList[i].col] = SquareType::TRAVELER;
+		}
+		
+		gridLocks[localTraveler->segmentList[i].row][localTraveler->segmentList[i].col]->unlock();
 	}
 		mutexLock.unlock();
 
@@ -323,7 +346,7 @@ void handleKeyboardEvent(unsigned char c, int x, int y)
 
 		//	speedup
 		case '.':
-		for(int i = 0; i < partitionList.size()-1; i++){
+		for(unsigned int i = 0; i < partitionList.size()-1; i++){
 		slidePartition(&partitionList[i]);
 
 		}
@@ -410,6 +433,10 @@ int main(int argc, char* argv[])
 	for (unsigned int i=0; i< numRows; i++)
 		free(grid[i]);
 	free(grid);
+	for (unsigned int i=0; i< numRows; i++)
+		free(gridLocks[i]);
+	free(gridLocks);
+
 	for (int k=0; k<MAX_NUM_MESSAGES; k++)
 		free(message[k]);
 	free(message);
@@ -436,14 +463,14 @@ void initializeApplication(void)
 
 	//	Allocate the grid
 	grid = new SquareType*[numRows];
-	gridLocks = new mutex*[numRows];
+	gridLocks = new mutex**[numRows];
 	for (unsigned int i=0; i<numRows; i++)
 	{
 		grid[i] = new SquareType[numCols];
-		gridLocks[i] = new mutex[numCols];
+		gridLocks[i] = new mutex*[numCols];
 		for (unsigned int j=0; j< numCols; j++){
 			grid[i][j] = SquareType::FREE_SQUARE;
-
+			gridLocks[i][j] = new mutex;
 		}
 
 		
@@ -464,7 +491,10 @@ void initializeApplication(void)
 
 	//	generate a random exit
 	exitPos = getNewFreePosition();
+
+	gridLocks[exitPos.row][exitPos.col]->lock();
 	grid[exitPos.row][exitPos.col] = SquareType::EXIT;
+	gridLocks[exitPos.row][exitPos.col]->unlock();
 
 	//	Generate walls and partitions
 	generateWalls();
@@ -482,7 +512,10 @@ void initializeApplication(void)
 		TravelerSegment seg = {pos.row, pos.col, dir};
 		Traveler traveler;
 		traveler.segmentList.push_back(seg);
+
+		gridLocks[pos.row][pos.col]->lock();
 		grid[pos.row][pos.col] = SquareType::TRAVELER;
+		gridLocks[pos.row][pos.col]->unlock();
 
 		//	I add 0-n segments to my travelers
 		unsigned int numAddSegments = segmentNumberGenerator(engine);
@@ -596,32 +629,40 @@ mutexLock.unlock();
 
 	mutexLock.lock();
 	if (northAdjustment >= 0 && northAdjustment != negativeOne){
+		gridLocks[northAdjustment][currentCol]->lock();
 		if(grid[northAdjustment][currentCol] == SquareType::FREE_SQUARE || grid[northAdjustment][currentCol] == SquareType::EXIT){
 			northOpen = true;
 		}
+		gridLocks[northAdjustment][currentCol]->unlock();
 	}
 	mutexLock.unlock();
 
 	mutexLock.lock();
 	if (southAdjustment < numRows){
+		gridLocks[southAdjustment][currentCol]->lock();
 		if(grid[southAdjustment][currentCol] == SquareType::FREE_SQUARE || grid[southAdjustment][currentCol] == SquareType::EXIT){
 			southOpen = true;
 		}
+		gridLocks[southAdjustment][currentCol]->unlock();
 	}
 	mutexLock.unlock();
 	mutexLock.lock();
 	if (westAdjustment >= 0 && westAdjustment != negativeOne){
+		gridLocks[currentRow][westAdjustment]->lock();
 		if(grid[currentRow][westAdjustment] == SquareType::FREE_SQUARE || grid[currentRow][westAdjustment] == SquareType::EXIT){
 			westOpen = true;
 		}
+		gridLocks[currentRow][westAdjustment]->unlock();
 	}
 	mutexLock.unlock();
 
 	mutexLock.lock();
 	if (eastAdjustment < numCols){
+		gridLocks[currentRow][eastAdjustment]->lock();
 		if(grid[currentRow][eastAdjustment] == SquareType::FREE_SQUARE || grid[currentRow][eastAdjustment] == SquareType::EXIT){
 			eastOpen = true;
 		}
+		gridLocks[currentRow][eastAdjustment]->unlock();
 	}
 	mutexLock.unlock();
 
@@ -730,36 +771,44 @@ bool checkNextSquare(struct Traveler *localTraveler, Direction currentDir){
 	unsigned int currentCol = localTraveler->segmentList[0].col;
 
 	if (currentDir == Direction::EAST){
+		gridLocks[currentCol + 1][currentRow]->lock();
 		if(grid[currentCol + 1][currentRow] == SquareType::FREE_SQUARE && currentCol + 1 < numCols){
 			return true;
 		}
 		else{
 			return false;
 		}
+		gridLocks[currentCol + 1][currentRow]->unlock();
 	}
 	else if(currentDir == Direction::WEST){
+		gridLocks[currentCol - 1][currentRow]->lock();
 		if(grid[currentCol - 1][currentRow] == SquareType::FREE_SQUARE && currentCol - 1 > 0){
 			return true;
 		}
 		else{
 			return false;
 		}
+		gridLocks[currentCol - 1][currentRow]->unlock();
 	}
 	else if(currentDir == Direction::NORTH){
+		gridLocks[currentCol][currentRow - 1]->lock();
 		if(grid[currentCol][currentRow - 1] == SquareType::FREE_SQUARE && currentRow - 1 > 0){
 			return true;
 		}
 		else{
 			return false;
 		}
+		gridLocks[currentCol][currentRow - 1]->unlock();
 	}
 	else{
+		gridLocks[currentCol][currentRow + 1]->lock();
 		if(grid[currentCol][currentRow + 1] == SquareType::FREE_SQUARE && currentRow + 1 < 0){
 			return true;
 		}
 		else{
 			return false;
 		}
+		gridLocks[currentCol][currentRow + 1]->unlock();
 	}
 	mutexLock.unlock();
 }
@@ -781,12 +830,14 @@ GridPosition getNewFreePosition(void)
 	{
 		unsigned int row = rowGenerator(engine);
 		unsigned int col = colGenerator(engine);
+		gridLocks[row][col]->try_lock();
 		if (grid[row][col] == SquareType::FREE_SQUARE)
 		{
 			pos.row = row;
 			pos.col = col;
 			noGoodPos = false;
 		}
+		gridLocks[row][col]->unlock();
 	}
 	return pos;
 }
@@ -914,9 +965,11 @@ void generateWalls(void)
 				//	now a random start row
 				unsigned int startRow = unsignedNumberGenerator(engine)%(numRows-length);
 				for (unsigned int row=startRow, i=0; i<length && goodWall; i++, row++)
-				{
+				{	
+					gridLocks[row][col]->lock();
 					if (grid[row][col] != SquareType::FREE_SQUARE)
 						goodWall = false;
+					gridLocks[row][col]->unlock();
 				}
 				
 				//	if the wall first, add it to the grid
@@ -924,7 +977,9 @@ void generateWalls(void)
 				{
 					for (unsigned int row=startRow, i=0; i<length && goodWall; i++, row++)
 					{
+						gridLocks[row][col]->lock();
 						grid[row][col] = SquareType::WALL;
+						gridLocks[row][col]->unlock();
 					}
 				}
 			}
@@ -949,8 +1004,10 @@ void generateWalls(void)
 				unsigned int startCol = unsignedNumberGenerator(engine)%(numCols-length);
 				for (unsigned int col=startCol, i=0; i<length && goodWall; i++, col++)
 				{
+					gridLocks[row][col]->lock();
 					if (grid[row][col] != SquareType::FREE_SQUARE)
 						goodWall = false;
+					gridLocks[row][col]->unlock();
 				}
 				
 				//	if the wall first, add it to the grid
@@ -958,7 +1015,9 @@ void generateWalls(void)
 				{
 					for (unsigned int col=startCol, i=0; i<length && goodWall; i++, col++)
 					{
+						gridLocks[row][col]->lock();
 						grid[row][col] = SquareType::WALL;
+						gridLocks[row][col]->unlock();
 					}
 				}
 			}
@@ -1002,8 +1061,10 @@ void generatePartitions(void)
 				unsigned int startRow = unsignedNumberGenerator(engine)%(numRows-length);
 				for (unsigned int row=startRow, i=0; i<length && goodPart; i++, row++)
 				{
+					gridLocks[row][col]->lock();
 					if (grid[row][col] != SquareType::FREE_SQUARE)
 						goodPart = false;
+					gridLocks[row][col]->unlock();
 				}
 				
 				//	if the partition is possible,
@@ -1014,7 +1075,9 @@ void generatePartitions(void)
 					part.isVertical = true;
 					for (unsigned int row=startRow, i=0; i<length && goodPart; i++, row++)
 					{
+						gridLocks[row][col]->lock();
 						grid[row][col] = SquareType::VERTICAL_PARTITION;
+						gridLocks[row][col]->unlock();
 						GridPosition pos = {row, col};
 						part.blockList.push_back(pos);
 					}
@@ -1044,8 +1107,10 @@ void generatePartitions(void)
 				unsigned int startCol = unsignedNumberGenerator(engine)%(numCols-length);
 				for (unsigned int col=startCol, i=0; i<length && goodPart; i++, col++)
 				{
+					gridLocks[row][col]->lock();
 					if (grid[row][col] != SquareType::FREE_SQUARE)
 						goodPart = false;
+					gridLocks[row][col]->unlock();	
 				}
 				
 				//	if the wall first, add it to the grid and build SlidingPartition object
@@ -1055,7 +1120,9 @@ void generatePartitions(void)
 					part.isVertical = false;
 					for (unsigned int col=startCol, i=0; i<length && goodPart; i++, col++)
 					{
+						gridLocks[row][col]->lock();
 						grid[row][col] = SquareType::HORIZONTAL_PARTITION;
+						gridLocks[row][col]->unlock();
 						GridPosition pos = {row, col};
 						part.blockList.push_back(pos);
 					}
