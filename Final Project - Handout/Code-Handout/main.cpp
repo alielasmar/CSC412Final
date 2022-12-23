@@ -18,13 +18,14 @@
 //
 #include "gl_frontEnd.h"
 //
-#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <mutex>
 //	feel free to "un-use" std if this is against your beliefs.
 using namespace std;
+
 std::mutex mutexLock;
+
 //==================================================================================
 //	Function prototypes
 //==================================================================================
@@ -36,7 +37,6 @@ void generateWalls(void);
 void generatePartitions(void);
 void singleThreadFunc(struct Traveler *localTraveler);
 Direction findMoveDirection(struct Traveler *localTraveler);
-bool checkNextSquare(struct Traveler *localTraveler, Direction currentDir);
 void moveTraveler(struct Traveler *localTraveler);
 void moveDirection(struct Traveler *localTraveler, Direction currentDir);
 
@@ -58,7 +58,6 @@ vector<Traveler> travelerList;
 vector<SlidingPartition> partitionList;
 GridPosition	exitPos;	//	location of the exit
 vector<thread*> threadList; //  list of pointers to threads
-vector<Direction> possibleDirections;   //  List of possible directions the traveler can move
 
 //	travelers' sleep time between moves (in microseconds)
 const int MIN_SLEEP_TIME = 1000;
@@ -85,55 +84,65 @@ uniform_int_distribution<unsigned int> colGenerator;
 
 
 //==================================================================================
-//	These are the functions that tie the simulation with the rendering.			  ||
-//	Some parts are "don't touch."  Other parts need your intervention			  ||
-//	to make sure that access to critical section is properly synchronized		  ||
+//	These are the functions that tie the simulation with the rendering.
+//	Some parts are "don't touch."  Other parts need your intervention
+//	to make sure that access to critical section is properly synchronized
 //==================================================================================
 
 void updatePos(struct Traveler * localTraveler){
-	//cout<<"POS Updated"<<endl;
+
 	mutexLock.lock();
 	for(int i = localTraveler->segmentList.size()-1; i > 0; i--){
 		localTraveler->segmentList[i].col=localTraveler->segmentList[i-1].col;
 		localTraveler->segmentList[i].row=localTraveler->segmentList[i-1].row;
-		localTraveler->segmentList[i].dir=localTraveler->segmentList[i-1].dir;	
+		localTraveler->segmentList[i].dir=localTraveler->segmentList[i-1].dir;
+
 	}
 	mutexLock.unlock();
+
 }
 
 
 void moveTravelerN(struct Traveler * localTraveler){
  	updatePos(localTraveler);
+
 	mutexLock.lock();
 	localTraveler->segmentList[0].dir = Direction::NORTH;
 	localTraveler->segmentList[0].row--;
 	mutexLock.unlock();
+
 }
 
 
 void moveTravelerS(struct Traveler * localTraveler){
  	updatePos(localTraveler);
+
 	mutexLock.lock();
 	localTraveler->segmentList[0].dir = Direction::SOUTH;
 	localTraveler->segmentList[0].row++;
 	mutexLock.unlock();
+
 }
 
 
 void moveTravelerE(struct Traveler * localTraveler){
+
 	updatePos(localTraveler);
 	mutexLock.lock();
 	localTraveler->segmentList[0].dir = Direction::EAST;
 	localTraveler->segmentList[0].col++;
 	mutexLock.unlock();
+
 }
 
 void moveTravelerW(struct Traveler * localTraveler){
  	updatePos(localTraveler);
+
 	mutexLock.lock();
 	localTraveler->segmentList[0].dir = Direction::WEST;
 	localTraveler->segmentList[0].col--;
 	mutexLock.unlock();
+
 }
 
 void drawTravelers(void)
@@ -178,7 +187,12 @@ void handleKeyboardEvent(unsigned char c, int x, int y)
 	{
 		//	'esc' to quit
 		case 27:
-			for(unsigned int i = 0; i < 1; i++){
+//jyh
+//	Your traveler threads have no way to know that they should terminate, so
+//	the joining will not work.
+//	Second, you are looping on numTaavelers but you only pushed one thread, so
+//	you segfault on this.  Should be threadL:ist.size().
+			for(unsigned int i = 0; i < threadList.size(); i++){
 				threadList[i]->join();
 			}
 			exit(0);
@@ -192,8 +206,6 @@ void handleKeyboardEvent(unsigned char c, int x, int y)
 
 		//	speedup
 		case '.':
-/*		 moves traveler			*/		
-			//moveTravelerE(&travelerList[0]);
 			speedupTravelers();
 			ok = 1;
 			break;
@@ -279,6 +291,8 @@ int main(int argc, char* argv[])
 	for (int k=0; k<MAX_NUM_MESSAGES; k++)
 		free(message[k]);
 	free(message);
+
+
 	//	This will probably never be executed (the exit point will be in one of the
 	//	call back functions).
 	return 0;
@@ -347,11 +361,9 @@ void initializeApplication(void)
 		unsigned int numAddSegments = segmentNumberGenerator(engine);
 		TravelerSegment currSeg = traveler.segmentList[0];
 		bool canAddSegment = true;
-		cout << "Traveler " << k << " at (row=" << pos.row << ", col=" <<
-		pos.col << "), direction: " << dirStr(dir) << ", with up to " << numAddSegments << " additional segments" << endl;
-		cout << "\t";
-
-		traveler.numberOfSegments = numAddSegments;
+		//cout << "Traveler " << k << " at (row=" << pos.row << ", col=" <<
+		//pos.col << "), direction: " << dirStr(dir) << ", with up to " << numAddSegments << " additional segments" << endl;
+		//cout << "\t";
 
 		for (unsigned int s=0; s<numAddSegments && canAddSegment; s++)
 		{
@@ -371,11 +383,6 @@ void initializeApplication(void)
 		travelerList.push_back(traveler);
 	}
 
-	possibleDirections.push_back(Direction::NORTH);
-	possibleDirections.push_back(Direction::SOUTH);
-	possibleDirections.push_back(Direction::EAST);
-	possibleDirections.push_back(Direction::WEST);
-
 	thread** travelerThreads = new thread*[numTravelers];
 	for(unsigned int i = 0; i < numTravelers; i++){
 		travelerThreads[i] = new thread(singleThreadFunc, &travelerList[i]);
@@ -394,11 +401,27 @@ void initializeApplication(void)
 
 
 void singleThreadFunc(struct Traveler *localTraveler){
-	usleep(1000000);
 
 	bool goalReached = false;
 	unsigned int currentRow, currentCol;
-	
+
+//jyh
+//	You shoulds also use a global bool that the main thread can set whe it wants the
+//	traveler theeads to end (so it can join them).
+//	so...
+//		// global variable
+//		bool appIsRunnning = true;
+//
+//		...
+//
+//		set false in handleKeyboardEvent, before trying to join
+//		appIsRunnning = false;
+//
+//		...
+//
+//	and here
+//	while(!goalReached && appIsRunning){
+
 	while(goalReached != true){
 		mutexLock.lock();
 		currentRow = localTraveler->segmentList[0].row;
@@ -410,32 +433,18 @@ void singleThreadFunc(struct Traveler *localTraveler){
 			goalReached = true;
 			numLiveThreads --;
 			numTravelersDone ++;
-			//std::terminate();
+			
+			//jyh
+			//	You will also want to clear the grid squares that are still marked
+			//	as occupied by your traveler.
 		}
 		mutexLock.unlock();
 		if(goalReached == false){
-//cout<<"MOVE TRAvELER"<<endl;
+
+
 			moveTraveler(localTraveler);
 		}
-	/*	
-		if(currentRow > exitPos.row){
-			moveTravelerN(localTraveler);
-			usleep(travelerSleepTime);
-		}
-		else if (currentRow < exitPos.row){
-			moveTravelerS(localTraveler);
-			usleep(travelerSleepTime);
-		}
-		//Check east/west movement
-		else if(currentCol > exitPos.col){
-			moveTravelerW(localTraveler);
-			usleep(travelerSleepTime);
-		}
-		else if (currentCol < exitPos.col){
-			moveTravelerE(localTraveler);
-			usleep(travelerSleepTime);
-		}
-	*/
+
 	}
 			
 }
@@ -456,6 +465,7 @@ void moveTraveler(struct Traveler *localTraveler){
 	bool southOpen = false;
 	bool westOpen = false;
 	bool eastOpen = false;
+
 	//Find direction that is behind it
 	if(localTraveler->segmentList[0].dir == Direction::NORTH){
 		behind = Direction::SOUTH;
@@ -485,6 +495,10 @@ void moveTraveler(struct Traveler *localTraveler){
 	}
 
 	if (northAdjustment > 0){
+
+//jyh
+//	should be free square or the EXIT
+
 		if(grid[northAdjustment][currentCol] == SquareType::FREE_SQUARE || grid[northAdjustment][currentCol] == SquareType::EXIT){
 			northOpen = true;
 		}
@@ -529,6 +543,9 @@ void moveTraveler(struct Traveler *localTraveler){
 		canMove.push_back(Direction::EAST);
 		moves++;
 	}
+
+
+
 	if(moves > 0){
 		moveDirection(localTraveler, canMove[rand() % moves]);
 	}
@@ -556,6 +573,7 @@ void moveDirection(struct Traveler *localTraveler, Direction currentDir){
 		usleep(travelerSleepTime);
 	}
 }
+
 
 
 /*
@@ -622,6 +640,7 @@ Direction findMoveDirection(struct Traveler *localTraveler){
 	}
 }
 */
+
 
 bool checkNextSquare(struct Traveler *localTraveler, Direction currentDir){
 
