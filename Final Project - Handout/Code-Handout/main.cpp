@@ -70,6 +70,7 @@ const int MAX_NUM_MESSAGES = 8;
 const int MAX_LENGTH_MESSAGE = 32;
 char** message;
 time_t launchTime;
+bool appRunning = true;
 
 //	Random generators:  For uniform distributions
 const unsigned int MAX_NUM_INITIAL_SEGMENTS = 6;
@@ -187,11 +188,7 @@ void handleKeyboardEvent(unsigned char c, int x, int y)
 	{
 		//	'esc' to quit
 		case 27:
-//jyh
-//	Your traveler threads have no way to know that they should terminate, so
-//	the joining will not work.
-//	Second, you are looping on numTaavelers but you only pushed one thread, so
-//	you segfault on this.  Should be threadL:ist.size().
+			appRunning = false;
 			for(unsigned int i = 0; i < threadList.size(); i++){
 				threadList[i]->join();
 			}
@@ -405,24 +402,7 @@ void singleThreadFunc(struct Traveler *localTraveler){
 	bool goalReached = false;
 	unsigned int currentRow, currentCol;
 
-//jyh
-//	You shoulds also use a global bool that the main thread can set whe it wants the
-//	traveler theeads to end (so it can join them).
-//	so...
-//		// global variable
-//		bool appIsRunnning = true;
-//
-//		...
-//
-//		set false in handleKeyboardEvent, before trying to join
-//		appIsRunnning = false;
-//
-//		...
-//
-//	and here
-//	while(!goalReached && appIsRunning){
-
-	while(goalReached != true){
+	while(goalReached != true && appRunning == true){
 		mutexLock.lock();
 		currentRow = localTraveler->segmentList[0].row;
 		currentCol = localTraveler->segmentList[0].col;
@@ -457,6 +437,7 @@ void moveTraveler(struct Traveler *localTraveler){
 	int moves = 0;
 	int currentRow = localTraveler->segmentList[0].row;
 	int currentCol = localTraveler->segmentList[0].col;
+	unsigned int negativeOne = -1;
 	unsigned int northAdjustment = localTraveler->segmentList[0].row - 1;
 	unsigned int southAdjustment = localTraveler->segmentList[0].row + 1;
 	unsigned int westAdjustment = localTraveler->segmentList[0].col - 1;
@@ -494,11 +475,7 @@ void moveTraveler(struct Traveler *localTraveler){
 		behind = Direction::EAST;
 	}
 
-	if (northAdjustment > 0){
-
-//jyh
-//	should be free square or the EXIT
-
+	if (northAdjustment >= 0 && northAdjustment != negativeOne){
 		if(grid[northAdjustment][currentCol] == SquareType::FREE_SQUARE || grid[northAdjustment][currentCol] == SquareType::EXIT){
 			northOpen = true;
 		}
@@ -510,7 +487,7 @@ void moveTraveler(struct Traveler *localTraveler){
 		}
 	}
 
-	if (westAdjustment > 0){
+	if (westAdjustment >= 0 && westAdjustment != negativeOne){
 		if(grid[currentRow][westAdjustment] == SquareType::FREE_SQUARE || grid[currentRow][westAdjustment] == SquareType::EXIT){
 			westOpen = true;
 		}
