@@ -48,6 +48,7 @@ void moveDirection(struct Traveler *localTraveler, Direction currentDir);
 //-------------------------------------
 //	The state grid and its dimensions (arguments to the program)
 SquareType** grid;
+mutex** gridLocks;
 unsigned int numRows = 0;	//	height of the grid
 unsigned int numCols = 0;	//	width
 unsigned int numTravelers = 0;	//	initial number
@@ -435,11 +436,16 @@ void initializeApplication(void)
 
 	//	Allocate the grid
 	grid = new SquareType*[numRows];
+	gridLocks = new mutex*[numRows];
 	for (unsigned int i=0; i<numRows; i++)
 	{
 		grid[i] = new SquareType[numCols];
-		for (unsigned int j=0; j< numCols; j++)
+		gridLocks[i] = new mutex[numCols];
+		for (unsigned int j=0; j< numCols; j++){
 			grid[i][j] = SquareType::FREE_SQUARE;
+
+		}
+
 		
 	}
 
@@ -500,7 +506,7 @@ void initializeApplication(void)
 
 		for (unsigned int c=0; c<4; c++)
 			traveler.rgba[c] = travelerColor[k][c];
-		
+
 		travelerList.push_back(traveler);
 	}
 
@@ -523,6 +529,7 @@ void initializeApplication(void)
 
 void singleThreadFunc(struct Traveler *localTraveler){
 
+	localTraveler->travelerLock = new mutex;
 
 	bool goalReached = false;
 	unsigned int currentRow, currentCol;

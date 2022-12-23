@@ -92,7 +92,13 @@ struct Traveler
 	 */
 	std::vector<TravelerSegment> segmentList;
 
+
+	//  The amount of moves the traveler has completed
 	int movesTraveled;
+
+
+	//  The lock for the traveler
+	std::mutex *travelerLock; 
 };
 
 
