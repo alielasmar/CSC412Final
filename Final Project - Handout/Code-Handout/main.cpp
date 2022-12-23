@@ -21,11 +21,10 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <mutex>
 //	feel free to "un-use" std if this is against your beliefs.
 using namespace std;
-pthread_t t1;
-pthread_mutex_t mutexLock;
+std::mutex mutexLock;
 //==================================================================================
 //	Function prototypes
 //==================================================================================
@@ -93,47 +92,48 @@ uniform_int_distribution<unsigned int> colGenerator;
 
 void updatePos(struct Traveler * localTraveler){
 	//cout<<"POS Updated"<<endl;
-	for(int i = localTraveler->numberOfSegments; i > 0; i--){
+	mutexLock.lock();
+	for(int i = localTraveler->segmentList.size()-1; i > 0; i--){
 		localTraveler->segmentList[i].col=localTraveler->segmentList[i-1].col;
 		localTraveler->segmentList[i].row=localTraveler->segmentList[i-1].row;
 		localTraveler->segmentList[i].dir=localTraveler->segmentList[i-1].dir;	
 	}
-	pthread_mutex_unlock(&mutexLock);
+	mutexLock.unlock();
 }
 
 
 void moveTravelerN(struct Traveler * localTraveler){
-	pthread_mutex_lock(&mutexLock);
- 	//updatePos(localTraveler);
+ 	updatePos(localTraveler);
+	mutexLock.lock();
 	localTraveler->segmentList[0].dir = Direction::NORTH;
 	localTraveler->segmentList[0].row--;
-	pthread_mutex_unlock(&mutexLock);
+	mutexLock.unlock();
 }
 
 
 void moveTravelerS(struct Traveler * localTraveler){
-	pthread_mutex_lock(&mutexLock);
- 	//updatePos(localTraveler);
+ 	updatePos(localTraveler);
+	mutexLock.lock();
 	localTraveler->segmentList[0].dir = Direction::SOUTH;
 	localTraveler->segmentList[0].row++;
-	pthread_mutex_unlock(&mutexLock);
+	mutexLock.unlock();
 }
 
 
 void moveTravelerE(struct Traveler * localTraveler){
-	pthread_mutex_lock(&mutexLock);
-	//updatePos(localTraveler);
+	updatePos(localTraveler);
+	mutexLock.lock();
 	localTraveler->segmentList[0].dir = Direction::EAST;
 	localTraveler->segmentList[0].col++;
-	pthread_mutex_unlock(&mutexLock);
+	mutexLock.unlock();
 }
 
 void moveTravelerW(struct Traveler * localTraveler){
-	pthread_mutex_lock(&mutexLock);
- 	//updatePos(localTraveler);
+ 	updatePos(localTraveler);
+	mutexLock.lock();
 	localTraveler->segmentList[0].dir = Direction::WEST;
 	localTraveler->segmentList[0].col--;
-	pthread_mutex_unlock(&mutexLock);
+	mutexLock.unlock();
 }
 
 void drawTravelers(void)
@@ -242,7 +242,6 @@ void slowdownTravelers(void)
 //------------------------------------------------------------------------
 int main(int argc, char* argv[])
 {
-	pthread_mutex_init(&mutexLock,NULL);
 
 	//	We know that the arguments  of the program  are going
 	//	to be the width (number of columns) and height (number of rows) of the
@@ -280,7 +279,6 @@ int main(int argc, char* argv[])
 	for (int k=0; k<MAX_NUM_MESSAGES; k++)
 		free(message[k]);
 	free(message);
-	pthread_mutex_destroy(&mutexLock);
 	//	This will probably never be executed (the exit point will be in one of the
 	//	call back functions).
 	return 0;
@@ -402,21 +400,24 @@ void singleThreadFunc(struct Traveler *localTraveler){
 	unsigned int currentRow, currentCol;
 	
 	while(goalReached != true){
+		mutexLock.lock();
 		currentRow = localTraveler->segmentList[0].row;
 		currentCol = localTraveler->segmentList[0].col;
+		mutexLock.unlock();
 
+		mutexLock.lock();
 		if(currentRow == exitPos.row && currentCol == exitPos.col){
 			goalReached = true;
 			numLiveThreads --;
 			numTravelersDone ++;
 			//std::terminate();
 		}
-
+		mutexLock.unlock();
 		if(goalReached == false){
 //cout<<"MOVE TRAvELER"<<endl;
-			//moveTraveler(localTraveler);
+			moveTraveler(localTraveler);
 		}
-		
+	/*	
 		if(currentRow > exitPos.row){
 			moveTravelerN(localTraveler);
 			usleep(travelerSleepTime);
@@ -434,8 +435,9 @@ void singleThreadFunc(struct Traveler *localTraveler){
 			moveTravelerE(localTraveler);
 			usleep(travelerSleepTime);
 		}
-		
+	*/
 	}
+			
 }
 
 
@@ -468,29 +470,44 @@ void moveTraveler(struct Traveler *localTraveler){
 		behind = Direction::EAST;
 	}
 
+	//Find direction that is behind it
+	if(localTraveler->segmentList[0].dir == Direction::NORTH){
+		behind = Direction::SOUTH;
+	}
+	else if(localTraveler->segmentList[0].dir == Direction::SOUTH){
+		behind = Direction::NORTH;
+	}
+	else if(localTraveler->segmentList[0].dir == Direction::EAST){
+		behind = Direction::WEST;
+	}
+	else{
+		behind = Direction::EAST;
+	}
+
 	if (northAdjustment > 0){
-		if(grid[currentRow--][currentCol] == SquareType::FREE_SQUARE || grid[currentRow--][currentCol] == SquareType::EXIT){
+		if(grid[northAdjustment][currentCol] == SquareType::FREE_SQUARE || grid[northAdjustment][currentCol] == SquareType::EXIT){
 			northOpen = true;
 		}
 	}
 
 	if (southAdjustment < numRows){
-		if(grid[currentRow++][currentCol] == SquareType::FREE_SQUARE || grid[currentRow++][currentCol] == SquareType::EXIT){
+		if(grid[southAdjustment][currentCol] == SquareType::FREE_SQUARE || grid[southAdjustment][currentCol] == SquareType::EXIT){
 			southOpen = true;
 		}
 	}
 
 	if (westAdjustment > 0){
-		if(grid[currentRow][currentCol--] == SquareType::FREE_SQUARE || grid[currentRow][currentCol--] == SquareType::EXIT){
+		if(grid[currentRow][westAdjustment] == SquareType::FREE_SQUARE || grid[currentRow][westAdjustment] == SquareType::EXIT){
 			westOpen = true;
 		}
 	}
 
 	if (eastAdjustment < numCols){
-		if(grid[currentRow][currentCol++] == SquareType::FREE_SQUARE || grid[currentRow][currentCol++] == SquareType::EXIT){
+		if(grid[currentRow][eastAdjustment] == SquareType::FREE_SQUARE || grid[currentRow][eastAdjustment] == SquareType::EXIT){
 			eastOpen = true;
 		}
 	}
+
 
 
 	if(Direction::NORTH != behind && northOpen == true){
@@ -512,17 +529,36 @@ void moveTraveler(struct Traveler *localTraveler){
 		canMove.push_back(Direction::EAST);
 		moves++;
 	}
-	//cout<<"CALLS MOVEDIRECTION()"<<endl;
 	if(moves > 0){
-		cout<<rand() % moves<<endl;
-		//moveDirection(localTraveler, canMove[rand() % moves]);
-		//moveDirection(localTraveler,Direction::EAST);
-		canMove.clear();
+		moveDirection(localTraveler, canMove[rand() % moves]);
 	}
+}
 
+void moveDirection(struct Traveler *localTraveler, Direction currentDir){
+	if(currentDir == Direction::NORTH){
+		//usleep(travelerSleepTime*10);
+		moveTravelerN(localTraveler);
+		usleep(travelerSleepTime);
+	}
+	else if(currentDir == Direction::SOUTH){
+		//usleep(travelerSleepTime*10);
+		moveTravelerS(localTraveler);
+		usleep(travelerSleepTime);
+	}
+	else if(currentDir == Direction::EAST){
+		//usleep(travelerSleepTime*10);
+		moveTravelerE(localTraveler);
+		usleep(travelerSleepTime);
+	}
+	else if(currentDir == Direction::WEST){
+		//usleep(travelerSleepTime*10);
+		moveTravelerW(localTraveler);
+		usleep(travelerSleepTime);
+	}
 }
 
 
+/*
 void moveDirection(struct Traveler *localTraveler, Direction currentDir){
 	if(currentDir == Direction::NORTH){
 		//usleep(travelerSleepTime*10);
@@ -546,7 +582,7 @@ void moveDirection(struct Traveler *localTraveler, Direction currentDir){
 		usleep(travelerSleepTime);
 	}
 }
-
+*/
 
 
 
