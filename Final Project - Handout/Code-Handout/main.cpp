@@ -945,7 +945,7 @@ void moveDirectionParition(struct Traveler *localTraveler, Direction currentDir)
 			}
 		}
 		
-		movePartitionN(localTraveler, partitionList[partitionIdx].blockList[blockIdx].col);
+		movePartitionN(&partitionList[partitionIdx]);
 		usleep(travelerSleepTime);
 	}
 
@@ -962,7 +962,7 @@ void moveDirectionParition(struct Traveler *localTraveler, Direction currentDir)
 			}
 		}
 		
-		movePartitionS(localTraveler, partitionList[partitionIdx].blockList[blockIdx].col);
+		movePartitionS(&partitionList[partitionIdx]);
 		usleep(travelerSleepTime);
 	}
 	
@@ -979,7 +979,7 @@ void moveDirectionParition(struct Traveler *localTraveler, Direction currentDir)
 			}
 		}
 
-		movePartitionW(localTraveler);
+		movePartitionW(&partitionList[partitionIdx]);
 		usleep(travelerSleepTime);
 	}
 
@@ -989,7 +989,7 @@ void moveDirectionParition(struct Traveler *localTraveler, Direction currentDir)
 		
 		}
 		
-		movePartitionE(localTraveler);
+		movePartitionE(&partitionList[partitionIdx]);
 		usleep(travelerSleepTime);
 	}
 }
