@@ -40,6 +40,7 @@ void generatePartitions(void);
 void singleThreadFunc(struct Traveler *localTraveler);
 void moveTraveler(struct Traveler *localTraveler);
 void moveDirection(struct Traveler *localTraveler, Direction currentDir);
+void moveDirectionParition(struct Traveler *localTraveler, Direction currentDir);
 
 //==================================================================================
 //	Application-level global variables
@@ -722,9 +723,11 @@ void singleThreadFunc(struct Traveler *localTraveler){
 void moveTraveler(struct Traveler *localTraveler){
 	//Tracks all directions a traveler can move
 	vector<Direction> canMove;
+	vector<Direction> partitionCanMove;
 	Direction behind;
 	
 	int moves = 0;
+	int partitionMoves = 0;
 	int currentRow = localTraveler->segmentList[0].row;
 	int currentCol = localTraveler->segmentList[0].col;
 
@@ -741,6 +744,12 @@ void moveTraveler(struct Traveler *localTraveler){
 	bool southOpen = false;
 	bool westOpen = false;
 	bool eastOpen = false;
+
+	//Used to see if the square to the direction is a partition
+	bool northPartition = false;
+	bool southPartition = false;
+	bool westPartition = false;
+	bool eastPartition = false;
 
 mutexLock.lock();
 	//Find direction that is behind it
@@ -765,7 +774,12 @@ mutexLock.unlock();
 		if(grid[northAdjustment][currentCol] == SquareType::FREE_SQUARE || grid[northAdjustment][currentCol] == SquareType::EXIT){
 			northOpen = true;
 		}
-		//else if(grid[northAdjustment][currentCol] == SquareType::HORIZONTAL_PARTITION || grid[northAdjustment][currentCol] == SquareType::VERTICAL_PARTITION ){}
+
+		else if(grid[northAdjustment][currentCol] == SquareType::VERTICAL_PARTITION){
+			northPartition = true;
+			partitionMoves++;
+		}
+
 		gridLocks[northAdjustment][currentCol]->unlock();
 	}
 	mutexLock.unlock();
@@ -776,6 +790,10 @@ mutexLock.unlock();
 		if(grid[southAdjustment][currentCol] == SquareType::FREE_SQUARE || grid[southAdjustment][currentCol] == SquareType::EXIT){
 			southOpen = true;
 		}
+		else if(grid[southAdjustment][currentCol] == SquareType::VERTICAL_PARTITION){
+			southPartition = true;
+			partitionMoves++;
+		}
 		gridLocks[southAdjustment][currentCol]->unlock();
 	}
 	mutexLock.unlock();
@@ -784,6 +802,10 @@ mutexLock.unlock();
 		gridLocks[currentRow][westAdjustment]->lock();
 		if(grid[currentRow][westAdjustment] == SquareType::FREE_SQUARE || grid[currentRow][westAdjustment] == SquareType::EXIT){
 			westOpen = true;
+		}
+		else if(grid[currentRow][westAdjustment] == SquareType::HORIZONTAL_PARTITION){
+			westPartition = true;
+			partitionMoves++;
 		}
 		gridLocks[currentRow][westAdjustment]->unlock();
 	}
@@ -794,6 +816,10 @@ mutexLock.unlock();
 		gridLocks[currentRow][eastAdjustment]->lock();
 		if(grid[currentRow][eastAdjustment] == SquareType::FREE_SQUARE || grid[currentRow][eastAdjustment] == SquareType::EXIT){
 			eastOpen = true;
+		}
+		else if(grid[currentRow][eastAdjustment] == SquareType::HORIZONTAL_PARTITION){
+			eastPartition = true;
+			partitionMoves++;
 		}
 		gridLocks[currentRow][eastAdjustment]->unlock();
 	}
@@ -820,6 +846,27 @@ mutexLock.unlock();
 		canMove.push_back(Direction::EAST);
 		moves++;
 	}
+
+
+	if(Direction::NORTH != behind && northPartition == true){
+		partitionCanMove.push_back(Direction::NORTH);
+		moves++;
+	}
+
+	if(Direction::SOUTH != behind && southPartition == true){
+		partitionCanMove.push_back(Direction::SOUTH);
+		moves++;
+	}
+
+	if(Direction::WEST != behind && westPartition == true){
+		partitionCanMove.push_back(Direction::WEST);
+		moves++;
+	}
+
+	if(Direction::EAST != behind && eastPartition == true){
+		partitionCanMove.push_back(Direction::EAST);
+		moves++;
+	}
 	mutexLock.unlock();
 
 	//If it can move, it chooses a random direction and goes that way
@@ -833,11 +880,22 @@ mutexLock.unlock();
 		}
 		moveDirection(localTraveler, canMove[rand() % moves]);
 	}
+	else if(partitionMoves > 0){
+		if(localTraveler->movesTraveled % movesBeforeGrowth == 0){
+			growTraveler(localTraveler);
+		/* 
+		Grow traveler
+		*/
+		}
+
+		moveDirectionParition(localTraveler, partitionCanMove[rand() % moves]);
+		
+	}
 }
 
 /*
 	Dylan
-	Function that takes a traveler and a direction and calls the correspomding move function
+	Function that takes a traveler and a direction and calls the corresponding move function
 */
 void moveDirection(struct Traveler *localTraveler, Direction currentDir){
 
@@ -861,6 +919,79 @@ void moveDirection(struct Traveler *localTraveler, Direction currentDir){
 		usleep(travelerSleepTime);
 	}
 	
+}
+
+
+/*
+	Dylan
+	Function that takes a traveler and a direction and calls the corresponding partition move function
+*/
+void moveDirectionParition(struct Traveler *localTraveler, Direction currentDir){
+	
+	int currentRow = localTraveler->segmentList[0].row;
+	int currentCol = localTraveler->segmentList[0].col;
+	int partitionIdx, blockIdx;
+	
+	if(currentDir == Direction::NORTH){
+		unsigned int northAdjustment = localTraveler->segmentList[0].row - 1;
+		for (unsigned int i = 0; i < partitionList.size(); i++){
+			if(partitionList[i].blockList[0].row == northAdjustment || partitionList[i].blockList[0].col == currentCol){
+				for(unsigned int j = 0; j < partitionList[i].blockList.size(); j++){
+					if(partitionList[i].blockList[0].row == northAdjustment && partitionList[i].blockList[0].col == currentCol){
+						partitionIdx = i;
+						blockIdx = j;
+					}
+				}
+			}
+		}
+		
+		movePartitionN(localTraveler, partitionList[partitionIdx].blockList[blockIdx].col);
+		usleep(travelerSleepTime);
+	}
+
+	else if(currentDir == Direction::SOUTH){
+		unsigned int southAdjustment = localTraveler->segmentList[0].row + 1;
+		for (unsigned int i = 0; i < partitionList.size(); i++){
+			if(partitionList[i].blockList[0].row == southAdjustment || partitionList[i].blockList[0].col == currentCol){
+				for(unsigned int j = 0; j < partitionList[i].blockList.size(); j++){
+					if(partitionList[i].blockList[0].row == southAdjustment && partitionList[i].blockList[0].col == currentCol){
+						partitionIdx = i;
+						blockIdx = j;
+					}
+				}
+			}
+		}
+		
+		movePartitionS(localTraveler, partitionList[partitionIdx].blockList[blockIdx].col);
+		usleep(travelerSleepTime);
+	}
+	
+	else if(currentDir == Direction::WEST){
+	unsigned int westAdjustment = localTraveler->segmentList[0].col - 1;
+		for (unsigned int i = 0; i < partitionList.size(); i++){
+			if(partitionList[i].blockList[0].row == currentRow || partitionList[i].blockList[0].col == westAdjustment){
+				for(unsigned int j = 0; j < partitionList[i].blockList.size(); j++){
+					if(partitionList[i].blockList[0].row == currentRow && partitionList[i].blockList[0].col == currentCol){
+						partitionIdx = i;
+						blockIdx = j;
+					}
+				}
+			}
+		}
+
+		movePartitionW(localTraveler);
+		usleep(travelerSleepTime);
+	}
+
+	else if(currentDir == Direction::EAST){
+		unsigned int eastAdjustment = localTraveler->segmentList[0].col + 1;
+		for (unsigned int i = 0; i < partitionList.size(); i++){
+		
+		}
+		
+		movePartitionE(localTraveler);
+		usleep(travelerSleepTime);
+	}
 }
 
 
