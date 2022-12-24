@@ -91,8 +91,9 @@ uniform_int_distribution<unsigned int> colGenerator;
 //	to make sure that access to critical section is properly synchronized
 //==================================================================================
 
-void erasePartition(SlidingPartition * localPartition){
+void erasePartition(SlidingPartition * localPartition, Direction directionMoving){
 	// erases full partition to enable sliding
+	int blockListSize = localPartition->blockList.size()-1;
 	/*
 	if(north)
 	lastelement.row-1 = free
@@ -107,6 +108,12 @@ void erasePartition(SlidingPartition * localPartition){
 	firstelement.col-1 = free
 
 	*/
+	if(directionMoving == Direction::EAST){
+		grid [localPartition->blockList[blockListSize].row] [localPartition->blockList[blockListSize].col-1] = SquareType::FREE_SQUARE;
+	}
+	if(directionMoving == Direction::WEST){
+		grid [localPartition->blockList[blockListSize].row] [localPartition->blockList[0].col+1] = SquareType::FREE_SQUARE;
+	}
 
 
 
@@ -138,6 +145,7 @@ void movePartition(SlidingPartition * localPartition, Direction directionMoving)
 						grid[localPartition->blockList[i].row][localPartition->blockList[i].col] = SquareType::VERTICAL_PARTITION;
 						gridLocks[localPartition->blockList[i].row][localPartition->blockList[i].col]->unlock();
 						willMove = true;
+						erasePartition(localPartition,directionMoving);
 					}
 				}
 
@@ -163,6 +171,7 @@ void movePartition(SlidingPartition * localPartition, Direction directionMoving)
 							grid[localPartition->blockList[i].row][localPartition->blockList[i].col] = SquareType::VERTICAL_PARTITION;
 							gridLocks[localPartition->blockList[i].row][localPartition->blockList[i].col]->unlock();
 							willMove = true;
+							erasePartition(localPartition,directionMoving);
 					}
 
 				}
@@ -186,6 +195,7 @@ void movePartition(SlidingPartition * localPartition, Direction directionMoving)
 							grid[localPartition->blockList[i].row][localPartition->blockList[i].col] = SquareType::HORIZONTAL_PARTITION;
 							gridLocks[localPartition->blockList[i].row][localPartition->blockList[i].col]->unlock();
 							willMove = true;
+							erasePartition(localPartition,directionMoving);
 					}
 			
 				}
@@ -198,9 +208,8 @@ void movePartition(SlidingPartition * localPartition, Direction directionMoving)
 		}
 	}
 /* West not working for absolutley no reason */
-	if(localPartition->blockList[0].col-1 < 0 && localPartition->blockList[blockListSize].col-1 < 0){
+	if(localPartition->blockList[0].col-1 > 0 && localPartition->blockList[0].col-1 != -1){
 		if(directionMoving == Direction::WEST){
-			cout<<"WEST"<<endl;
 			for(int i = localPartition->blockList.size()-1; i > 0; i--){
 				if(grid[localPartition->blockList[0].row][localPartition->blockList[0].col-1] == SquareType::FREE_SQUARE){ 
 					if(localPartition->blockList[0].col-1 >= 0&& localPartition->blockList[blockListSize].col-1 >= 0){
@@ -209,14 +218,8 @@ void movePartition(SlidingPartition * localPartition, Direction directionMoving)
 						grid[localPartition->blockList[i].row][localPartition->blockList[i].col] = SquareType::HORIZONTAL_PARTITION;
 						gridLocks[localPartition->blockList[i].row][localPartition->blockList[i].col]->unlock();
 						willMove = true;
+						erasePartition(localPartition,directionMoving);
 					}
-				}
-				else if(grid[localPartition->blockList[blockListSize].row][localPartition->blockList[blockListSize].col-1] == SquareType::FREE_SQUARE ){
-						localPartition->blockList[i].col--;
-						gridLocks[localPartition->blockList[i].row][localPartition->blockList[i].col]->lock();
-						grid[localPartition->blockList[i].row][localPartition->blockList[i].col] = SquareType::HORIZONTAL_PARTITION;
-						gridLocks[localPartition->blockList[i].row][localPartition->blockList[i].col]->unlock();
-						willMove = true;
 				}
 			}
 		}
