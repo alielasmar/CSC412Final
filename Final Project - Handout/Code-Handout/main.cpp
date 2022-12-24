@@ -126,7 +126,7 @@ void movePartition(SlidingPartition * localPartition, Direction directionMoving)
 	//erasePartition(localPartition);
 	unsigned int negOne = -1;
 // i
-	if(localPartition->blockList[0].row-1 > 0 && localPartition->blockList[blockListSize].row-1 != negOne){
+	if(localPartition->blockList[0].row-1 > 0 && localPartition->blockList[0].row-1 != negOne){
 
 		if(directionMoving == Direction::NORTH){
 			for(int i = localPartition->blockList.size()-1; i > 0; i--){
@@ -141,15 +141,7 @@ void movePartition(SlidingPartition * localPartition, Direction directionMoving)
 					}
 				}
 
-				else if (grid[localPartition->blockList[blockListSize].row-1][localPartition->blockList[blockListSize].col] == SquareType::FREE_SQUARE ){
-					if (localPartition->blockList[0].row-1 >= 0 && localPartition->blockList[blockListSize].row-1 >= 0){
-						localPartition->blockList[i].row--;
-						gridLocks[localPartition->blockList[i].row][localPartition->blockList[i].col]->lock();
-						grid[localPartition->blockList[i].row][localPartition->blockList[i].col] = SquareType::VERTICAL_PARTITION;
-						gridLocks[localPartition->blockList[i].row][localPartition->blockList[i].col]->unlock();
-						willMove = true;
-					}
-				}
+
 
 			}
 
@@ -159,13 +151,13 @@ void movePartition(SlidingPartition * localPartition, Direction directionMoving)
 		}
 	}
 
-	if(localPartition->blockList[0].row+1 < numRows-1  && localPartition->blockList[blockListSize].row+1 < numRows-1){
+	if(localPartition->blockList[blockListSize].row+1 < numRows-1  && localPartition->blockList[blockListSize].row+1 < numRows-1){
 		if(directionMoving == Direction::SOUTH){
 			for(int i = localPartition->blockList.size()-1; i > 0; i--){
 
 
-				if(grid[localPartition->blockList[0].row+1][localPartition->blockList[0].col] == SquareType::FREE_SQUARE){ 					
-					if(localPartition->blockList[0].row+1 <= numRows && localPartition->blockList[blockListSize].row+1 <= numRows){
+				if(grid[localPartition->blockList[blockListSize].row+1][localPartition->blockList[blockListSize].col] == SquareType::FREE_SQUARE){ 					
+					if(localPartition->blockList[blockListSize].row+1 <= numRows && localPartition->blockList[blockListSize].row+1 <= numRows){
 							localPartition->blockList[i].row++;
 							gridLocks[localPartition->blockList[i].row][localPartition->blockList[i].col]->lock();
 							grid[localPartition->blockList[i].row][localPartition->blockList[i].col] = SquareType::VERTICAL_PARTITION;
@@ -173,15 +165,6 @@ void movePartition(SlidingPartition * localPartition, Direction directionMoving)
 							willMove = true;
 					}
 
-				}
-				else if (grid[localPartition->blockList[blockListSize].row+1][localPartition->blockList[blockListSize].col] == SquareType::FREE_SQUARE){
-					if(localPartition->blockList[0].row+1 <= numRows && localPartition->blockList[blockListSize].row+1 <= numRows){
-							localPartition->blockList[i].row++;
-							gridLocks[localPartition->blockList[i].row][localPartition->blockList[i].col]->lock();
-							grid[localPartition->blockList[i].row][localPartition->blockList[i].col] = SquareType::VERTICAL_PARTITION;
-							gridLocks[localPartition->blockList[i].row][localPartition->blockList[i].col]->unlock();
-							willMove = true;
-					}
 				}
 			
 			}
@@ -194,20 +177,9 @@ void movePartition(SlidingPartition * localPartition, Direction directionMoving)
 
 	if(localPartition->blockList[0].col+1 < numCols && localPartition->blockList[blockListSize].col+1 < numCols){
 		if(directionMoving == Direction::EAST){
-
 			for(int i = localPartition->blockList.size()-1; i > 0; i--){
-				if(grid[localPartition->blockList[0].row][localPartition->blockList[0].col+1] == SquareType::FREE_SQUARE){ 
-					if( localPartition->blockList[0].col+1 <= numCols  && localPartition->blockList[blockListSize].col+1  <= numCols ){
-							localPartition->blockList[i].col++;
-							gridLocks[localPartition->blockList[i].row][localPartition->blockList[i].col]->lock();
-							grid[localPartition->blockList[i].row][localPartition->blockList[i].col] = SquareType::HORIZONTAL_PARTITION;
-							gridLocks[localPartition->blockList[i].row][localPartition->blockList[i].col]->unlock();
-							willMove = true;
-					}
 
-
-				}
-				else if(grid[localPartition->blockList[blockListSize].row][localPartition->blockList[blockListSize].col+1] == SquareType::FREE_SQUARE){
+				if(grid[localPartition->blockList[blockListSize].row][localPartition->blockList[blockListSize].col+1] == SquareType::FREE_SQUARE){
 					if( localPartition->blockList[0].col+1 <= numCols  && localPartition->blockList[blockListSize].col+1  <= numCols ){
 							localPartition->blockList[i].col++;
 							gridLocks[localPartition->blockList[i].row][localPartition->blockList[i].col]->lock();
@@ -225,9 +197,10 @@ void movePartition(SlidingPartition * localPartition, Direction directionMoving)
 
 		}
 	}
-
-	if(localPartition->blockList[0].col-1 < 0 && localPartition->blockList[blockListSize].col-1 != negOne){
+/* West not working for absolutley no reason */
+	if(localPartition->blockList[0].col-1 < 0 && localPartition->blockList[blockListSize].col-1 < 0){
 		if(directionMoving == Direction::WEST){
+			cout<<"WEST"<<endl;
 			for(int i = localPartition->blockList.size()-1; i > 0; i--){
 				if(grid[localPartition->blockList[0].row][localPartition->blockList[0].col-1] == SquareType::FREE_SQUARE){ 
 					if(localPartition->blockList[0].col-1 >= 0&& localPartition->blockList[blockListSize].col-1 >= 0){
@@ -273,6 +246,7 @@ void slidePartition(SlidingPartition * localPartition){
 	int pickDir = rand()%2;
 	// calls following functs to update and redraw partitions in new positions
 	//erasePartition(localPartition);
+
 	movePartition(localPartition,possibleDir[pickDir]);
 
 }
