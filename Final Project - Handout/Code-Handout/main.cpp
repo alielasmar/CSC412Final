@@ -971,7 +971,7 @@ void moveDirectionParition(struct Traveler *localTraveler, Direction currentDir)
 		for (unsigned int i = 0; i < partitionList.size(); i++){
 			if(partitionList[i].blockList[0].row == currentRow || partitionList[i].blockList[0].col == westAdjustment){
 				for(unsigned int j = 0; j < partitionList[i].blockList.size(); j++){
-					if(partitionList[i].blockList[0].row == currentRow && partitionList[i].blockList[0].col == currentCol){
+					if(partitionList[i].blockList[0].row == currentRow && partitionList[i].blockList[0].col == westAdjustment){
 						partitionIdx = i;
 						blockIdx = j;
 					}
@@ -986,7 +986,14 @@ void moveDirectionParition(struct Traveler *localTraveler, Direction currentDir)
 	else if(currentDir == Direction::EAST){
 		unsigned int eastAdjustment = localTraveler->segmentList[0].col + 1;
 		for (unsigned int i = 0; i < partitionList.size(); i++){
-		
+			if(partitionList[i].blockList[0].row == currentRow || partitionList[i].blockList[0].col == eastAdjustment){
+				for(unsigned int j = 0; j < partitionList[i].blockList.size(); j++){
+					if(partitionList[i].blockList[0].row == currentRow && partitionList[i].blockList[0].col == eastAdjustment){
+						partitionIdx = i;
+						blockIdx = j;
+					}
+				}
+			}
 		}
 		
 		movePartitionE(&partitionList[partitionIdx]);
