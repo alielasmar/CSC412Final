@@ -38,7 +38,6 @@ TravelerSegment newTravelerSegment(const TravelerSegment& currentSeg, bool& canA
 void generateWalls(void);
 void generatePartitions(void);
 void singleThreadFunc(struct Traveler *localTraveler);
-Direction findMoveDirection(struct Traveler *localTraveler);
 void moveTraveler(struct Traveler *localTraveler);
 void moveDirection(struct Traveler *localTraveler, Direction currentDir);
 
@@ -58,7 +57,7 @@ unsigned int numTravelersDone = 0;
 unsigned int movesBeforeGrowth = 0;		//  Number of moves before the traveler grows
 unsigned int numLiveThreads = 0;		//	the number of live traveler threads
 vector<Traveler> travelerList;
-vector<SlidingPartition> partitionList;
+vector<SlidingPartition> partitionList; 
 GridPosition	exitPos;	//	location of the exit
 vector<thread*> threadList; //  list of pointers to threads
 
@@ -73,7 +72,7 @@ const int MAX_NUM_MESSAGES = 8;
 const int MAX_LENGTH_MESSAGE = 32;
 char** message;
 time_t launchTime;
-bool appRunning = true;
+bool appRunning = true;   //  keeps track of whether app should keep running
 
 //	Random generators:  For uniform distributions
 const unsigned int MAX_NUM_INITIAL_SEGMENTS = 6;
@@ -662,10 +661,8 @@ void initializeApplication(void)
 			{
 				traveler.segmentList.push_back(newSeg);
 				currSeg = newSeg;
-				//cout << dirStr(newSeg.dir) << "  ";
 			}
 		}
-		//cout << endl;
 
 		for (unsigned int c=0; c<4; c++)
 			traveler.rgba[c] = travelerColor[k][c];
@@ -673,6 +670,7 @@ void initializeApplication(void)
 		travelerList.push_back(traveler);
 	}
 
+	//Loop to create threads and call the thread function passing a pointer to a traveler
 	thread** travelerThreads = new thread*[numTravelers];
 	for(unsigned int i = 0; i < numTravelers; i++){
 		travelerThreads[i] = new thread(singleThreadFunc, &travelerList[i]);
@@ -690,32 +688,34 @@ void initializeApplication(void)
 }
 
 
+/*
+	Dylan
+	Function called by threads moves the traveler until they reach the goal or get stuck
+*/
 void singleThreadFunc(struct Traveler *localTraveler){
 
+	//Initialize mutex lock for traveler
 	localTraveler->travelerLock = new mutex;
-
+	
 	bool goalReached = false;
 	unsigned int currentRow, currentCol;
 
+	//Loop to move the traveler while the app is still running and the goal is not reached
 	while(goalReached != true && appRunning == true){
 		mutexLock.lock();
 		currentRow = localTraveler->segmentList[0].row;
 		currentCol = localTraveler->segmentList[0].col;
 		mutexLock.unlock();
 
+		//Check if goal is reached
 		if(currentRow == exitPos.row && currentCol == exitPos.col){
 			goalReached = true;
 			numLiveThreads --;
 			numTravelersDone ++;
 			eraseTraveler(localTraveler);
-			
-			//jyh
-			//	You will also want to clear the grid squares that are still marked
-			//	as occupied by your traveler.
 		}
-		//mutexLock.unlock();
+		//Moves the traveler if the goal has not been reached yet
 		if(goalReached == false){
-
 			moveTraveler(localTraveler);
 		}
 
@@ -724,18 +724,28 @@ void singleThreadFunc(struct Traveler *localTraveler){
 }
 
 
-
+/*
+	Dylan
+	Function called by thread function to figure out what direction to move the traveler
+*/
 void moveTraveler(struct Traveler *localTraveler){
+	//Tracks all directions a traveler can move
 	vector<Direction> canMove;
 	Direction behind;
+	
 	int moves = 0;
 	int currentRow = localTraveler->segmentList[0].row;
 	int currentCol = localTraveler->segmentList[0].col;
+
 	unsigned int negativeOne = -1;
+	
+	//Keeps track of the row/column displacement for a move in a certain direction
 	unsigned int northAdjustment = localTraveler->segmentList[0].row - 1;
 	unsigned int southAdjustment = localTraveler->segmentList[0].row + 1;
 	unsigned int westAdjustment = localTraveler->segmentList[0].col - 1;
 	unsigned int eastAdjustment = localTraveler->segmentList[0].col + 1;
+	
+	//Used to see if the square to the direction is open or the exit & in bounds
 	bool northOpen = false;
 	bool southOpen = false;
 	bool westOpen = false;
@@ -758,6 +768,7 @@ mutexLock.lock();
 mutexLock.unlock();
 
 	mutexLock.lock();
+	//Checks if moving that direction is in bounds and an acceptable tile to move to
 	if (northAdjustment >= 0 && northAdjustment != negativeOne){
 		gridLocks[northAdjustment][currentCol]->lock();
 		if(grid[northAdjustment][currentCol] == SquareType::FREE_SQUARE || grid[northAdjustment][currentCol] == SquareType::EXIT){
@@ -797,6 +808,7 @@ mutexLock.unlock();
 	mutexLock.unlock();
 
 	mutexLock.lock();
+	//Puts all the possible moves in the vector
 	if(Direction::NORTH != behind && northOpen == true){
 		canMove.push_back(Direction::NORTH);
 		moves++;
@@ -818,19 +830,23 @@ mutexLock.unlock();
 	}
 	mutexLock.unlock();
 
-
+	//If it can move, it chooses a random direction and goes that way
 	if(moves > 0){
-			if(localTraveler->movesTraveled % movesBeforeGrowth == 0){
-				growTraveler(localTraveler);
-			/* 
-			Grow traveler
-			*/
+		if(localTraveler->movesTraveled % movesBeforeGrowth == 0){
+			growTraveler(localTraveler);
+		/* 
+		Grow traveler
+		*/
 
-			}
+		}
 		moveDirection(localTraveler, canMove[rand() % moves]);
 	}
 }
 
+/*
+	Dylan
+	Function that takes a traveler and a direction and calls the correspomding move function
+*/
 void moveDirection(struct Traveler *localTraveler, Direction currentDir){
 
 	if(currentDir == Direction::NORTH){
@@ -853,55 +869,6 @@ void moveDirection(struct Traveler *localTraveler, Direction currentDir){
 		usleep(travelerSleepTime);
 	}
 	
-}
-
-
-bool checkNextSquare(struct Traveler *localTraveler, Direction currentDir){
-	mutexLock.lock();
-	unsigned int currentRow = localTraveler->segmentList[0].row;
-	unsigned int currentCol = localTraveler->segmentList[0].col;
-
-	if (currentDir == Direction::EAST){
-		gridLocks[currentCol + 1][currentRow]->lock();
-		if(grid[currentCol + 1][currentRow] == SquareType::FREE_SQUARE && currentCol + 1 < numCols){
-			return true;
-		}
-		else{
-			return false;
-		}
-		gridLocks[currentCol + 1][currentRow]->unlock();
-	}
-	else if(currentDir == Direction::WEST){
-		gridLocks[currentCol - 1][currentRow]->lock();
-		if(grid[currentCol - 1][currentRow] == SquareType::FREE_SQUARE && currentCol - 1 > 0){
-			return true;
-		}
-		else{
-			return false;
-		}
-		gridLocks[currentCol - 1][currentRow]->unlock();
-	}
-	else if(currentDir == Direction::NORTH){
-		gridLocks[currentCol][currentRow - 1]->lock();
-		if(grid[currentCol][currentRow - 1] == SquareType::FREE_SQUARE && currentRow - 1 > 0){
-			return true;
-		}
-		else{
-			return false;
-		}
-		gridLocks[currentCol][currentRow - 1]->unlock();
-	}
-	else{
-		gridLocks[currentCol][currentRow + 1]->lock();
-		if(grid[currentCol][currentRow + 1] == SquareType::FREE_SQUARE && currentRow + 1 < 0){
-			return true;
-		}
-		else{
-			return false;
-		}
-		gridLocks[currentCol][currentRow + 1]->unlock();
-	}
-	mutexLock.unlock();
 }
 
 
